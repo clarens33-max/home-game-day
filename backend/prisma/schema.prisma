@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ───────────────────────────────────────────────────
+
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  name               String
+  passwordHash       String
+  resetToken         String?
+  resetTokenExpires  DateTime?
+  createdAt          DateTime  @default(now())
+
+  ownedGames    GameOwner[]
+  assignedTasks GameTask[]
+  dayRoleSlots  GameDayRoleSlot[]
+  comments      TaskComment[]
+  teamMemberships TeamMember[]
+}
+
+// ─── Games ──────────────────────────────────────────────────────────
+
+model Game {
+  id          String    @id @default(uuid())
+  slug        String    @unique  // human-readable + uuid suffix e.g. "bbhr-march-22-a1b2"
+  title       String
+  eventType   EventType
+  eventDate   DateTime
+  doorsOpen   DateTime?
+  venueName   String?
+  venueAddress String?
+  venueMapUrl String?
+  homeTeamName String
+  logoUrl     String?
+  ticketingUrl String?
+  description String?
+
+  // Shareable tokens
+  guestToken  String    @unique @default(uuid())
+  publicToken String    @unique @default(uuid())
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  owners        GameOwner[]
+  matches       Match[]
+  teamMembers   TeamMember[]
+  teams         Team[]         // visiting + home teams (charters)
+  gameTasks     GameTask[]
+  gameDayRoles  GameDayRole[]
+  signs         Sign[]
+  rafflePrizes  RafflePrize[]
+  timingBlocks  TimingBlock[]
+  publicSections PublicSection[]
+}
+
+enum EventType {
+  HOME_GAME
+  TOURNAMENT
+}
+
+model GameOwner {
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  addedAt DateTime @default(now())
+
+  @@id([gameId, userId])
+}
+
+// ─── Team Members (organizing crew) ─────────────────────────────────
+
+model TeamMember {
+  id        String  @id @default(uuid())
+  game      Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId    String
+  user      User?   @relation(fields: [userId], references: [id])
+  userId    String?
+  // For members not yet on the platform:
+  name      String?
+  email     String?
+
+  available     Boolean?
+  helpsPrebout  Boolean?
+  gameDayRole   Boolean?
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Matches ─────────────────────────────────────────────────────────
+
+model Match {
+  id              String   @id @default(uuid())
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId          String
+  order           Int
+  homeTeam        String
+  awayTeam        String
+  scheduledTime   DateTime?
+  durationMinutes Int      @default(30)  // flexible per match
+  periods         Int      @default(2)   // 1 for tournament short-form, 2 for full
+  boutType        String?  // "WFTDA", "MRDA", "Open", etc.
+  notes           String?
+}
+
+// ─── Teams / Charters ────────────────────────────────────────────────
+
+model Team {
+  id          String      @id @default(uuid())
+  game        Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId      String
+  name        String
+  role        TeamRole    @default(VISITING)  // HOME or VISITING
+  contactName String?
+  contactEmail String?
+  jerseyColour String?
+  logoUrl     String?
+
+  skaters Skater[]
+}
+
+enum TeamRole {
+  HOME
+  VISITING
+}
+
+model Skater {
+  id            String   @id @default(uuid())
+  team          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId        String
+  number        Int?     // position 1-17 + bench
+  derbyName     String
+  skaterNumber  String?  // jersey number e.g. "767", "1312"
+  pronouns      String?
+  waiverSigned  Boolean  @default(false)
+  waiverSignedAt DateTime?
+  waiverSignature String? // base64 signature image
+  headshot      String?  // URL or base64
+  benchSlot     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+// ─── Pre-Bout Tasks ───────────────────────────────────────────────────
+
+// Seed data: predefined task templates
+model TaskTemplate {
+  id            String    @id @default(uuid())
+  category      String    // "Logistics", "Crew", etc.
+  name          String
+  leadTimeDays  Int?      // null = no default deadline
+  isRequired    Boolean   @default(false)
+  eventScope    EventScope @default(BOTH)
+  order         Int
+  gameTasks     GameTask[]
+}
+
+enum EventScope {
+  HOME_GAME
+  TOURNAMENT
+  BOTH
+}
+
+// Per-game task instance
+model GameTask {
+  id              String     @id @default(uuid())
+  game            Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId          String
+  template        TaskTemplate? @relation(fields: [templateId], references: [id])
+  templateId      String?
+  // For custom tasks (no template):
+  category        String?
+  name            String?
+  // Overrides / instance data:
+  assignee        User?      @relation(fields: [assigneeId], references: [id])
+  assigneeId      String?
+  assigneeName    String?    // for non-user assignees
+  status          TaskStatus @default(TO_DO)
+  deadlineOverride DateTime?
+  order           Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  comments TaskComment[]
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  DONE
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  task      GameTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  String?
+  authorName String? // for non-user commenters
+  body      String
+  createdAt DateTime @default(now())
+}
+
+// ─── On-the-Day Roles ─────────────────────────────────────────────────
+
+// Seed data: predefined role templates
+model DayRoleTemplate {
+  id           String @id @default(uuid())
+  name         String
+  headcount    String // "x1", "x2", "x4", "ALL", "ANYONE"
+  order        Int
+  gameDayRoles GameDayRole[]
+}
+
+// Per-game role instance
+model GameDayRole {
+  id         String          @id @default(uuid())
+  game       Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId     String
+  template   DayRoleTemplate? @relation(fields: [templateId], references: [id])
+  templateId String?
+  name       String?         // for custom roles
+  headcount  String?
+  order      Int             @default(0)
+
+  slots GameDayRoleSlot[]
+}
+
+model GameDayRoleSlot {
+  id         String      @id @default(uuid())
+  role       GameDayRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId     String
+  slotIndex  Int         // 1–4
+  user       User?       @relation(fields: [userId], references: [id])
+  userId     String?
+  personName String?     // for non-user assignees
+}
+
+// ─── Signs ───────────────────────────────────────────────────────────
+
+model Sign {
+  id      String @id @default(uuid())
+  game    Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId  String
+  name    String
+  copies  String // "x2", "x4", etc.
+  notes   String?
+  checked Boolean @default(false)
+  order   Int     @default(0)
+}
+
+// ─── Raffle Prizes ───────────────────────────────────────────────────
+
+model RafflePrize {
+  id        String  @id @default(uuid())
+  game      Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId    String
+  item      String
+  description String?
+  value     String?
+  donator   String?
+}
+
+// ─── Timing Blocks ───────────────────────────────────────────────────
+
+model TimingBlock {
+  id       String @id @default(uuid())
+  game     Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId   String
+  time     String // "13:00", "13:15" etc.
+  activity String
+  order    Int
+}
+
+// ─── Public Page Sections ────────────────────────────────────────────
+
+model PublicSection {
+  id      String @id @default(uuid())
+  game    Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId  String
+  type    String // "venue", "about", "faq", "schedule", "custom"
+  title   String
+  content String
+  order   Int    @default(0)
+  visible Boolean @default(true)
+}
