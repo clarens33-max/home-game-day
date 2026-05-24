@@ -1,8 +1,7 @@
 {
-  "name": "backend",
+  "name": "home-game-day-backend",
   "version": "1.0.0",
   "description": "",
-  "name": "home-game-day-backend",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
