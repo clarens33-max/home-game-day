@@ -135,18 +135,18 @@ export default function CreateGamePage() {
                   />
                 </div>
 
-                {eventType === 'HOME_GAME' && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium mb-1.5">Home team name</label>
-                    <input
-                      type="text"
-                      value={form.homeTeamName}
-                      onChange={set('homeTeamName')}
-                      className={inputClass}
-                      placeholder="e.g. River City Rollers"
-                    />
-                  </div>
-                )}
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-1.5">
+                    {eventType === 'TOURNAMENT' ? 'Organising team name' : 'Home team name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={form.homeTeamName}
+                    onChange={set('homeTeamName')}
+                    className={inputClass}
+                    placeholder="e.g. River City Rollers"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
