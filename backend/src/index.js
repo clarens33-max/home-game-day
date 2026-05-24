@@ -24,5 +24,11 @@ app.use('/api/portal/public', require('./routes/publicPortal'))
 
 app.get('/health', (_, res) => res.json({ ok: true }))
 
+// Global error handler — logs the error and returns JSON
+app.use((err, req, res, next) => {
+  console.error(`[ERROR] ${req.method} ${req.path}:`, err.message, err.stack)
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' })
+})
+
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
