@@ -9,45 +9,45 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header — exact v0 structure */}
-      <header className="bg-header text-header-foreground sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-4">
-              <Link to="/" className="flex flex-col select-none">
-                <h1 className="font-display text-[1.75rem] font-bold tracking-[0.04em] leading-none">
-                  <span className="text-header-foreground">HOME</span>
-                  <span className="text-primary">GAME</span>
-                </h1>
-                <span className="text-[0.72rem] text-header-foreground/50 tracking-[0.06em] uppercase mt-[3px]">
-                  Roller Derby Event Ops
-                </span>
-              </Link>
-              {onGamePage && (
-                <Link
-                  to="/"
-                  className="flex items-center gap-1 text-header-foreground/50 hover:text-header-foreground transition-colors text-sm"
-                >
-                  <ChevronLeft size={16} />
-                  <span>All games</span>
-                </Link>
-              )}
-            </div>
+      {/* Header — mirrors Jamfinder: header is the flex parent, no inner max-width, px-6 py-4 */}
+      <header className="bg-header text-header-foreground sticky top-0 z-40 flex items-center justify-between gap-4 flex-wrap px-6 py-4">
 
-            {user && (
-              <div className="flex items-center gap-3">
-                <span className="text-header-foreground/50 text-sm hidden sm:block">{user.name ?? user.email}</span>
-                <button
-                  onClick={logout}
-                  className="flex items-center gap-1.5 text-header-foreground/50 hover:text-header-foreground transition-colors text-sm px-2 py-1 rounded hover:bg-header-foreground/10"
-                >
-                  <LogOut size={16} />
-                  <span className="hidden sm:inline">Log out</span>
-                </button>
-              </div>
-            )}
-          </div>
+        {/* Logo group — same structure as Jamfinder's <div> > .logo + .logo-sub */}
+        <div>
+          <Link to="/" className="select-none font-display text-[1.75rem] font-bold tracking-[0.04em] leading-none block">
+            <span className="text-header-foreground">HOME</span>
+            <span className="text-primary">GAME</span>
+          </Link>
+          <p className="font-sans text-[0.72rem] text-header-foreground/50 tracking-[0.06em] uppercase mt-[3px]">
+            Roller Derby Event Ops
+          </p>
         </div>
+
+        {/* Right side — same structure as Jamfinder's .header-right */}
+        <div className="flex items-center gap-[10px] flex-wrap">
+          {onGamePage && (
+            <Link
+              to="/"
+              className="flex items-center gap-1 text-[0.72rem] text-header-foreground/45 border border-header-foreground/15 rounded-[20px] px-3 py-1 hover:text-header-foreground/80 hover:border-header-foreground/35 transition-colors"
+            >
+              <ChevronLeft size={13} />
+              <span>All games</span>
+            </Link>
+          )}
+          {user && (
+            <>
+              <span className="text-[0.72rem] text-header-foreground/45 hidden sm:block">{user.name ?? user.email}</span>
+              <button
+                onClick={logout}
+                className="flex items-center gap-1.5 text-[0.72rem] text-header-foreground/45 border border-header-foreground/15 rounded-[20px] px-3 py-1 hover:text-header-foreground/80 hover:border-header-foreground/35 transition-colors"
+              >
+                <LogOut size={13} />
+                <span className="hidden sm:inline">Log out</span>
+              </button>
+            </>
+          )}
+        </div>
+
       </header>
 
       <main className="flex-1">

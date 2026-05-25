@@ -114,7 +114,7 @@ export default function GameDashboardPage() {
       </div>
 
       {/* Tabs — exact v0 */}
-      <div className="bg-card border-b border-border sticky top-[76px] z-10">
+      <div className="bg-card border-b border-border sticky top-[74px] z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1 overflow-x-auto scrollbar-hide -mb-px">
             {tabs.map((tab) => (
