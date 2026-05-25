@@ -21,9 +21,9 @@ import toast from 'react-hot-toast'
 
 const STATUS_CYCLE = { TO_DO: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: 'TO_DO' }
 const STATUS_STYLES = {
-  TO_DO: 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-  IN_PROGRESS: 'bg-orange-100 text-orange-700 hover:bg-orange-200',
-  DONE: 'bg-green-100 text-green-700 hover:bg-green-200',
+  TO_DO: 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+  IN_PROGRESS: 'bg-[#E91E8C] text-white hover:bg-[#c4167a]',
+  DONE: 'bg-green-500 text-white hover:bg-green-600',
 }
 const STATUS_LABELS = { TO_DO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
 
@@ -191,7 +191,7 @@ function TaskRow({ task, game, onRefresh }) {
 
   return (
     <>
-      <div className="flex items-center gap-3 py-2.5 px-3 hover:bg-[#F7F7F5] rounded-lg group transition-colors">
+      <div className="flex items-center gap-3 py-3 px-4 hover:bg-[#F5F5F0] group transition-colors border-t border-[#E8E8E2] first:border-t-0">
         {/* Status cycle button */}
         <button
           onClick={() => statusMutation.mutate({ status: STATUS_CYCLE[task.status] })}
@@ -300,35 +300,40 @@ function CategorySection({ category, tasks, game, onRefresh }) {
   })
 
   return (
-    <div className="bg-white border border-[#EAEAE4] rounded-xl overflow-hidden">
+    <div className="bg-white border border-[#E8E8E2] rounded-xl overflow-hidden">
       {/* Category header */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F5] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-4 hover:bg-[#F5F5F0] transition-colors"
       >
-        <span className="text-[#999]">
+        <span className="text-[#E91E8C]">
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </span>
         <span
-          className="flex-1 text-left text-sm font-semibold uppercase tracking-wider text-[#1C1C1C]"
+          className="flex-1 text-left font-bold uppercase tracking-wider text-[#1C1C1C]"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           {category}
         </span>
-        <span className={`text-xs font-medium mr-2 ${done === total ? 'text-green-600' : 'text-[#999]'}`}>
-          {done} / {total}
-        </span>
-        <div className="w-20 h-1.5 bg-[#EAEAE4] rounded-full overflow-hidden shrink-0">
-          <div
-            className="h-full bg-[#E91E8C] rounded-full transition-all"
-            style={{ width: `${pct}%` }}
-          />
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={`text-xs font-medium hidden sm:inline ${done === total ? 'text-green-600' : 'text-[#999]'}`}>
+            {done}/{total}
+          </span>
+          <div className="w-20 sm:w-28 h-2 bg-[#E8E8E2] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#E91E8C]/70 rounded-full transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-xs font-medium w-9 text-right text-[#1C1C1C]">
+            {pct}%
+          </span>
         </div>
       </button>
 
       {/* Task rows */}
       {expanded && (
-        <div className="px-2 pb-2 border-t border-[#EAEAE4]">
+        <div className="border-t border-[#E8E8E2]">
           {tasks.map((task) => (
             <TaskRow key={task.id} task={task} game={game} onRefresh={onRefresh} />
           ))}
@@ -391,25 +396,30 @@ export default function PreBoutTab({ game, onRefresh }) {
   return (
     <div className="space-y-5">
       {/* Overall progress */}
-      <div className="bg-white border border-[#EAEAE4] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-2">
-          <span
-            className="text-sm font-semibold uppercase tracking-wider"
+      <div className="bg-white border border-[#E8E8E2] rounded-xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2
+              className="text-base font-semibold uppercase tracking-wider text-[#1C1C1C]"
+              style={{ fontFamily: 'Oswald, sans-serif' }}
+            >
+              Overall Progress
+            </h2>
+            <p className="text-sm text-[#999] mt-1">{done} of {total} tasks completed</p>
+          </div>
+          <div
+            className="text-4xl sm:text-5xl font-bold text-[#E91E8C] shrink-0"
             style={{ fontFamily: 'Oswald, sans-serif' }}
           >
-            Overall Progress
-          </span>
-          <span className="text-sm font-semibold text-[#1C1C1C]">
-            {done} of {total} tasks done
-          </span>
+            {pct}%
+          </div>
         </div>
-        <div className="h-3 bg-[#EAEAE4] rounded-full overflow-hidden">
+        <div className="mt-4 h-3 bg-[#E8E8E2] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#E91E8C] rounded-full transition-all"
+            className="h-full bg-[#E91E8C] rounded-full transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-xs text-[#999] mt-1.5">{pct}% complete</p>
       </div>
 
       {/* Categories */}

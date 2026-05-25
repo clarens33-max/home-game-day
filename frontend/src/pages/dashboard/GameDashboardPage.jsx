@@ -8,10 +8,16 @@ import OnTheDayTab from './tabs/OnTheDayTab'
 import RostersTab from './tabs/RostersTab'
 import MatchesTab from './tabs/MatchesTab'
 import SettingsTab from './tabs/SettingsTab'
-import { Trophy, Home, Copy, Check } from 'lucide-react'
+import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const TABS = ['Pre-Bout', 'On the Day', 'Rosters', 'Matches', 'Settings']
+const TABS = [
+  { id: 'Pre-Bout',   label: 'PRE-BOUT',    icon: ClipboardList },
+  { id: 'On the Day', label: 'ON THE DAY',   icon: Calendar },
+  { id: 'Rosters',    label: 'ROSTERS',      icon: Users },
+  { id: 'Matches',    label: 'MATCHES',      icon: Trophy },
+  { id: 'Settings',   label: 'SETTINGS',     icon: Settings },
+]
 
 function CopyLinkButton({ label, url }) {
   const [copied, setCopied] = useState(false)
@@ -24,7 +30,7 @@ function CopyLinkButton({ label, url }) {
   return (
     <button
       onClick={copy}
-      className="flex items-center gap-1.5 text-xs text-[#999] hover:text-[#E91E8C] transition-colors px-2 py-1 rounded-md hover:bg-[#F7F7F5]"
+      className="flex items-center gap-1.5 text-xs text-white/70 hover:text-white transition-colors px-2.5 py-1 rounded-md hover:bg-white/10 border border-white/20"
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
       {label}
@@ -54,10 +60,9 @@ export default function GameDashboardPage() {
   if (isLoading) {
     return (
       <Layout>
+        <div className="h-20 bg-[#E91E8C] animate-pulse" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
-          <div className="h-8 bg-[#EAEAE4] rounded-lg animate-pulse w-72" />
-          <div className="h-4 bg-[#EAEAE4] rounded animate-pulse w-48" />
-          <div className="h-96 bg-white border border-[#EAEAE4] rounded-xl animate-pulse mt-6" />
+          <div className="h-96 bg-white border border-[#E8E8E2] rounded-xl animate-pulse" />
         </div>
       </Layout>
     )
@@ -77,67 +82,72 @@ export default function GameDashboardPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Game header */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                isTournament ? 'bg-amber-100 text-amber-700' : 'bg-[#E91E8C]/10 text-[#E91E8C]'
-              }`}>
-                {isTournament ? <Trophy size={12} /> : <Home size={12} />}
-                {isTournament ? 'Tournament' : 'Home Game'}
-              </span>
-              <span className="text-xs text-[#999]">{game.homeTeamName}</span>
+      {/* Pink event title bar */}
+      <div className="bg-[#E91E8C]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-white/20 text-white/90">
+                  {isTournament ? <Trophy size={10} /> : <Home size={10} />}
+                  {isTournament ? 'Tournament' : 'Home Game'}
+                </span>
+              </div>
+              <h1
+                className="text-2xl sm:text-3xl font-bold uppercase tracking-wide text-white leading-tight"
+                style={{ fontFamily: 'Oswald, sans-serif' }}
+              >
+                {game.title}
+              </h1>
+              {game.eventDate && (
+                <p className="text-sm text-white/80 mt-0.5 flex items-center gap-1.5">
+                  <Calendar size={13} />
+                  {formatDate(game.eventDate)}
+                  {game.venueName ? ` · ${game.venueName}` : ''}
+                </p>
+              )}
             </div>
-            <h1
-              className="text-3xl sm:text-4xl font-bold text-[#1C1C1C] leading-tight"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              {game.title}
-            </h1>
-            {game.eventDate && (
-              <p className="text-sm text-[#999] mt-1">{formatDate(game.eventDate)}{game.venueName ? ` · ${game.venueName}` : ''}</p>
-            )}
-          </div>
 
-          {/* Quick share links */}
-          <div className="flex items-center gap-1 bg-white border border-[#EAEAE4] rounded-lg px-2 py-1.5">
-            <span className="text-xs text-[#999] px-1 font-medium">Share:</span>
-            <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
-            <span className="text-[#EAEAE4]">|</span>
-            <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
+            {/* Share links */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-white/60 font-medium">Share:</span>
+              <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
+              <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Tab nav */}
-        <div className="bg-white border border-[#EAEAE4] rounded-xl overflow-hidden">
-          <div className="flex border-b border-[#EAEAE4] overflow-x-auto">
-            {TABS.map((tab) => (
+      {/* Sticky tab bar */}
+      <div className="bg-white border-b border-[#E8E8E2] sticky top-14 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex overflow-x-auto scrollbar-hide -mb-px">
+            {TABS.map(({ id: tabId, label, icon: Icon }) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`shrink-0 px-5 py-3.5 text-sm font-medium border-b-2 transition-all ${
-                  activeTab === tab
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                className={`flex items-center gap-2 px-4 sm:px-5 py-4 text-xs sm:text-sm font-medium tracking-wider whitespace-nowrap border-b-[3px] transition-colors ${
+                  activeTab === tabId
                     ? 'border-[#E91E8C] text-[#E91E8C]'
-                    : 'border-transparent text-[#999] hover:text-[#1C1C1C] hover:border-[#EAEAE4]'
+                    : 'border-transparent text-[#999] hover:text-[#1C1C1C] hover:border-[#E8E8E2]'
                 }`}
-                style={activeTab === tab ? { fontFamily: 'Oswald, sans-serif', letterSpacing: '0.04em' } : {}}
+                style={{ fontFamily: 'Oswald, sans-serif' }}
               >
-                {tab}
+                <Icon size={15} />
+                {label}
               </button>
             ))}
-          </div>
-
-          {/* Tab content */}
-          <div className="p-5 sm:p-6">
-            {activeTab === 'Pre-Bout'   && <PreBoutTab   game={game} onRefresh={onRefresh} />}
-            {activeTab === 'On the Day' && <OnTheDayTab  game={game} onRefresh={onRefresh} />}
-            {activeTab === 'Rosters'    && <RostersTab   game={game} onRefresh={onRefresh} />}
-            {activeTab === 'Matches'    && <MatchesTab   game={game} onRefresh={onRefresh} />}
-            {activeTab === 'Settings'   && <SettingsTab  game={game} onRefresh={onRefresh} />}
-          </div>
+          </nav>
         </div>
+      </div>
+
+      {/* Tab content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {activeTab === 'Pre-Bout'   && <PreBoutTab   game={game} onRefresh={onRefresh} />}
+        {activeTab === 'On the Day' && <OnTheDayTab  game={game} onRefresh={onRefresh} />}
+        {activeTab === 'Rosters'    && <RostersTab   game={game} onRefresh={onRefresh} />}
+        {activeTab === 'Matches'    && <MatchesTab   game={game} onRefresh={onRefresh} />}
+        {activeTab === 'Settings'   && <SettingsTab  game={game} onRefresh={onRefresh} />}
       </div>
     </Layout>
   )

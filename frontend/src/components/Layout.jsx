@@ -18,10 +18,17 @@ export default function Layout({ children }) {
           <div className="flex items-center gap-4">
             <Link
               to="/"
-              className="text-white text-xl tracking-widest select-none"
+              className="select-none"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
-              HOME GAME <span style={{ color: '#E91E8C' }}>DAY</span>
+              <div className="text-lg font-bold tracking-tight leading-none">
+                <span className="text-white">HOME</span>
+                <span className="text-[#E91E8C]">GAME</span>
+                <span className="text-white"> DAY</span>
+              </div>
+              <div className="text-[9px] text-white/40 tracking-widest uppercase mt-0.5">
+                Roller Derby Event Ops
+              </div>
             </Link>
             {onGamePage && (
               <Link
