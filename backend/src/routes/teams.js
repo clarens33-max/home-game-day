@@ -50,6 +50,20 @@ router.post('/:teamId/skaters', requireAuth, async (req, res) => {
   res.status(201).json(skater)
 })
 
+// POST /api/games/:gameId/teams/:teamId/skaters/bulk — add multiple skaters at once
+router.post('/:teamId/skaters/bulk', requireAuth, async (req, res) => {
+  const { gameId, teamId } = req.params
+  if (!await checkOwner(gameId, req.user.id)) return res.status(403).json({ error: 'Forbidden' })
+  const { skaters } = req.body
+  if (!Array.isArray(skaters) || skaters.length === 0) return res.status(400).json({ error: 'skaters array required' })
+  const created = await prisma.$transaction(
+    skaters.map(s => prisma.skater.create({
+      data: { teamId, derbyName: s.derbyName, skaterNumber: s.skaterNumber ?? null, pronouns: s.pronouns ?? null, benchSlot: false },
+    }))
+  )
+  res.status(201).json(created)
+})
+
 // PATCH /api/games/:gameId/teams/:teamId/skaters/:skaterId
 router.patch('/:teamId/skaters/:skaterId', requireAuth, async (req, res) => {
   const { gameId, skaterId } = req.params

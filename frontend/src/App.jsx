@@ -15,6 +15,7 @@ import GameDashboardPage from './pages/dashboard/GameDashboardPage'
 // Portals (no auth)
 import GuestPortalPage from './pages/guest/GuestPortalPage'
 import PublicPortalPage from './pages/public/PublicPortalPage'
+import VolunteerPortalPage from './pages/volunteer/VolunteerPortalPage'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
@@ -40,6 +41,7 @@ export default function App() {
       {/* Portals — public, no auth required */}
       <Route path="/g/:token" element={<GuestPortalPage />} />
       <Route path="/p/:token" element={<PublicPortalPage />} />
+      <Route path="/v/:token" element={<VolunteerPortalPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

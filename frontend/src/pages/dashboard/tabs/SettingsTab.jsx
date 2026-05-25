@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { updateGame, addCoOwner } from '../../../api/games'
+import { updateGame, addCoOwner, removeCoOwner } from '../../../api/games'
 import Button from '../../../components/Button'
-import { UserPlus, Copy, ExternalLink, Check } from 'lucide-react'
+import { UserPlus, Copy, ExternalLink, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function CopyField({ label, value }) {
@@ -39,7 +39,7 @@ function CopyField({ label, value }) {
   )
 }
 
-export default function SettingsTab({ game, onRefresh }) {
+export default function SettingsTab({ game, onRefresh, currentUserId }) {
   const queryClient = useQueryClient()
   const base = window.location.origin
 
@@ -79,6 +79,16 @@ export default function SettingsTab({ game, onRefresh }) {
     onError: (err) => toast.error(err?.response?.data?.error ?? 'Failed to add co-owner'),
   })
 
+  const removeMutation = useMutation({
+    mutationFn: (userId) => removeCoOwner(game.id, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['game', game.id] })
+      toast.success('Co-owner removed')
+      onRefresh()
+    },
+    onError: (err) => toast.error(err?.response?.data?.error ?? 'Failed to remove co-owner'),
+  })
+
   const handleSave = (e) => {
     e.preventDefault()
     updateMutation.mutate({
@@ -105,6 +115,7 @@ export default function SettingsTab({ game, onRefresh }) {
         </h2>
         <CopyField label="Guest Team Portal" value={`${base}/g/${game.guestToken}`} />
         <CopyField label="Public Info Page" value={`${base}/p/${game.publicToken}`} />
+        <CopyField label="Volunteer Portal" value={`${base}/v/${game.volunteerToken}`} />
       </div>
 
       {/* Game details */}
@@ -169,17 +180,31 @@ export default function SettingsTab({ game, onRefresh }) {
           Co-Owners
         </h2>
         <div className="space-y-2">
-          {game.owners?.map(({ user }) => (
-            <div key={user.id} className="flex items-center gap-3 py-2 px-3 bg-[#F7F7F5] rounded-lg">
-              <div className="w-7 h-7 rounded-full bg-[#E91E8C] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                {user.name?.[0]?.toUpperCase() ?? '?'}
+          {game.owners?.map(({ user }) => {
+            const isMe = user.id === currentUserId
+            const isLast = game.owners.length === 1
+            return (
+              <div key={user.id} className="flex items-center gap-3 py-2 px-3 bg-[#F7F7F5] rounded-lg">
+                <div className="w-7 h-7 rounded-full bg-[#E91E8C] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  {user.name?.[0]?.toUpperCase() ?? '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1C1C1C]">{user.name}{isMe && <span className="ml-1.5 text-xs text-[#999]">(you)</span>}</p>
+                  <p className="text-xs text-[#999]">{user.email}</p>
+                </div>
+                {!isMe && !isLast && (
+                  <button
+                    onClick={() => removeMutation.mutate(user.id)}
+                    disabled={removeMutation.isPending}
+                    className="shrink-0 p-1.5 text-[#999] hover:text-red-500 transition-colors rounded"
+                    title="Remove co-owner"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-              <div>
-                <p className="text-sm font-medium text-[#1C1C1C]">{user.name}</p>
-                <p className="text-xs text-[#999]">{user.email}</p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         <form onSubmit={handleInvite} className="flex gap-2">
           <input

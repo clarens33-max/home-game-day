@@ -166,6 +166,17 @@ router.post('/:id/owners', requireAuth, async (req, res) => {
   res.json({ ok: true, user: { id: invitee.id, name: invitee.name, email: invitee.email } })
 })
 
+// DELETE /api/games/:id/owners/:userId — remove co-owner
+router.delete('/:id/owners/:userId', requireAuth, async (req, res) => {
+  const isOwner = await prisma.gameOwner.findUnique({ where: { gameId_userId: { gameId: req.params.id, userId: req.user.id } } })
+  if (!isOwner) return res.status(403).json({ error: 'Forbidden' })
+  // Prevent removing the last owner
+  const ownerCount = await prisma.gameOwner.count({ where: { gameId: req.params.id } })
+  if (ownerCount <= 1) return res.status(400).json({ error: 'Cannot remove the last owner' })
+  await prisma.gameOwner.delete({ where: { gameId_userId: { gameId: req.params.id, userId: req.params.userId } } })
+  res.json({ ok: true })
+})
+
 // GET /api/games/public/:token — public info pack (no auth)
 router.get('/public/:token', async (req, res) => {
   const game = await prisma.game.findUnique({

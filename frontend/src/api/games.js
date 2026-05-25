@@ -5,6 +5,7 @@ export const createGame = data => api.post('/games', data).then(r => r.data)
 export const getGame = id => api.get(`/games/${id}`).then(r => r.data)
 export const updateGame = (id, data) => api.patch(`/games/${id}`, data).then(r => r.data)
 export const addCoOwner = (gameId, email) => api.post(`/games/${gameId}/owners`, { email }).then(r => r.data)
+export const removeCoOwner = (gameId, userId) => api.delete(`/games/${gameId}/owners/${userId}`).then(r => r.data)
 
 // Tasks
 export const updateTask = (gameId, taskId, data) => api.patch(`/games/${gameId}/tasks/${taskId}`, data).then(r => r.data)
@@ -23,6 +24,7 @@ export const generateRoundRobin = (gameId, data) => api.post(`/games/${gameId}/m
 export const addTeam = (gameId, data) => api.post(`/games/${gameId}/teams`, data).then(r => r.data)
 export const updateTeam = (gameId, teamId, data) => api.patch(`/games/${gameId}/teams/${teamId}`, data).then(r => r.data)
 export const addSkater = (gameId, teamId, data) => api.post(`/games/${gameId}/teams/${teamId}/skaters`, data).then(r => r.data)
+export const bulkAddSkaters = (gameId, teamId, skaters) => api.post(`/games/${gameId}/teams/${teamId}/skaters/bulk`, { skaters }).then(r => r.data)
 export const updateSkater = (gameId, teamId, skaterId, data) => api.patch(`/games/${gameId}/teams/${teamId}/skaters/${skaterId}`, data).then(r => r.data)
 export const deleteSkater = (gameId, teamId, skaterId) => api.delete(`/games/${gameId}/teams/${teamId}/skaters/${skaterId}`).then(r => r.data)
 
@@ -39,3 +41,9 @@ export const guestSignWaiver = (token, skaterId, signatureData) =>
 
 // Public portal
 export const getPublicPortal = token => api.get(`/portal/public/${token}`).then(r => r.data)
+
+// Volunteer portal
+export const getVolunteerPortal = token => api.get(`/portal/volunteer/${token}`).then(r => r.data)
+export const volunteerUpdateTask = (token, taskId, data) => api.patch(`/portal/volunteer/${token}/tasks/${taskId}`, data).then(r => r.data)
+export const volunteerUpdateDayRoleSlot = (token, roleId, slotIndex, personName) =>
+  api.patch(`/portal/volunteer/${token}/day-roles/${roleId}/slots/${slotIndex}`, { personName }).then(r => r.data)

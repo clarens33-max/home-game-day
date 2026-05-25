@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   addSkater,
+  bulkAddSkaters,
   deleteSkater,
   addTeam,
 } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
-import { Check, X, Trash2, Plus, UserPlus } from 'lucide-react'
+import { Check, X, Trash2, Plus, UserPlus, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function WaiverBadge({ signed }) {
@@ -22,9 +23,8 @@ function WaiverBadge({ signed }) {
   )
 }
 
-function AddSkaterForm({ game, team, onRefresh }) {
+function AddSkaterForm({ game, team, onRefresh, onClose }) {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
   const [derbyName, setDerbyName] = useState('')
   const [skaterNumber, setSkaterNumber] = useState('')
   const [pronouns, setPronouns] = useState('')
@@ -36,24 +36,11 @@ function AddSkaterForm({ game, team, onRefresh }) {
       setDerbyName('')
       setSkaterNumber('')
       setPronouns('')
-      setOpen(false)
       toast.success('Skater added')
       onRefresh()
     },
     onError: () => toast.error('Failed to add skater'),
   })
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-sm text-[#999] hover:text-[#E91E8C] transition-colors py-2"
-      >
-        <UserPlus size={14} />
-        Add skater
-      </button>
-    )
-  }
 
   return (
     <div className="mt-3 p-3 bg-[#F7F7F5] rounded-lg border border-[#EAEAE4]">
@@ -98,7 +85,78 @@ function AddSkaterForm({ game, team, onRefresh }) {
         >
           Add Skater
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+        <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </div>
+  )
+}
+
+function parseBulkText(text) {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      // Support "Derby Name, Number" or just "Derby Name"
+      const commaIdx = line.lastIndexOf(',')
+      if (commaIdx !== -1) {
+        const name = line.slice(0, commaIdx).trim()
+        const number = line.slice(commaIdx + 1).trim()
+        return { derbyName: name, skaterNumber: number || null }
+      }
+      return { derbyName: line, skaterNumber: null }
+    })
+    .filter(s => s.derbyName)
+}
+
+function BulkAddSkaterForm({ game, team, onClose, onRefresh }) {
+  const queryClient = useQueryClient()
+  const [text, setText] = useState('')
+  const preview = parseBulkText(text)
+
+  const mutation = useMutation({
+    mutationFn: (skaters) => bulkAddSkaters(game.id, team.id, skaters),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['game', game.id] })
+      toast.success(`${data.length} skater${data.length !== 1 ? 's' : ''} added`)
+      onClose()
+      onRefresh()
+    },
+    onError: () => toast.error('Failed to add skaters'),
+  })
+
+  return (
+    <div className="mt-3 p-3 bg-[#F7F7F5] rounded-lg border border-[#EAEAE4]">
+      <p className="text-xs text-[#999] mb-2">One skater per line. Format: <code className="bg-white px-1 rounded">Derby Name, Number</code></p>
+      <textarea
+        autoFocus
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder={"Smash Gordon, 42\nHellz Bellz, 1312\nRuby Rage"}
+        rows={5}
+        className="w-full border border-[#EAEAE4] rounded-lg px-2.5 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#E91E8C] mb-2"
+      />
+      {preview.length > 0 && (
+        <div className="mb-3 space-y-1">
+          {preview.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-[#1C1C1C]">
+              <span className="font-medium">{s.derbyName}</span>
+              {s.skaterNumber && <span className="text-[#999]">#{s.skaterNumber}</span>}
+            </div>
+          ))}
+          <p className="text-xs text-[#999] pt-1">{preview.length} skater{preview.length !== 1 ? 's' : ''} to add</p>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          onClick={() => { if (preview.length > 0) mutation.mutate(preview) }}
+          loading={mutation.isPending}
+          disabled={preview.length === 0}
+        >
+          Add {preview.length > 0 ? preview.length : ''} Skater{preview.length !== 1 ? 's' : ''}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
       </div>
     </div>
   )
@@ -107,6 +165,7 @@ function AddSkaterForm({ game, team, onRefresh }) {
 function TeamSection({ team, game, onRefresh }) {
   const queryClient = useQueryClient()
   const isHome = team.role === 'HOME'
+  const [addMode, setAddMode] = useState(null) // null | 'single' | 'bulk'
 
   const deleteMutation = useMutation({
     mutationFn: ({ teamId, skaterId }) => deleteSkater(game.id, teamId, skaterId),
@@ -200,7 +259,28 @@ function TeamSection({ team, game, onRefresh }) {
 
       {/* Add skater */}
       <div className="px-5 pb-4">
-        <AddSkaterForm game={game} team={team} onRefresh={onRefresh} />
+        {addMode === null && (
+          <div className="flex items-center gap-4 pt-2">
+            <button
+              onClick={() => setAddMode('single')}
+              className="flex items-center gap-1.5 text-sm text-[#999] hover:text-[#E91E8C] transition-colors"
+            >
+              <UserPlus size={14} /> Add skater
+            </button>
+            <button
+              onClick={() => setAddMode('bulk')}
+              className="flex items-center gap-1.5 text-sm text-[#999] hover:text-[#E91E8C] transition-colors"
+            >
+              <ClipboardList size={14} /> Paste list
+            </button>
+          </div>
+        )}
+        {addMode === 'single' && (
+          <AddSkaterForm game={game} team={team} onRefresh={onRefresh} onClose={() => setAddMode(null)} />
+        )}
+        {addMode === 'bulk' && (
+          <BulkAddSkaterForm game={game} team={team} onClose={() => setAddMode(null)} onRefresh={onRefresh} />
+        )}
       </div>
     </div>
   )

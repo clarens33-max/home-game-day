@@ -18,9 +18,10 @@ app.use('/api/games/:gameId/matches', require('./routes/matches'))
 app.use('/api/games/:gameId/teams', require('./routes/teams'))
 app.use('/api/games/:gameId/day-roles', require('./routes/dayRoles'))
 
-// Guest & public portal routes live under /api/portal for clean separation
+// Guest, public, and volunteer portal routes live under /api/portal for clean separation
 app.use('/api/portal/guest', require('./routes/guestPortal'))
 app.use('/api/portal/public', require('./routes/publicPortal'))
+app.use('/api/portal/volunteer', require('./routes/volunteerPortal'))
 
 app.get('/health', (_, res) => res.json({ ok: true }))
 
