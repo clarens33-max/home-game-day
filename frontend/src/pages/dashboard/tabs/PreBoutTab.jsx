@@ -3,15 +3,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateTask, addTask, deleteTask, addComment } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
-import { ChevronDown, ChevronRight, Calendar, MessageSquare, Plus, Trash2, Send } from 'lucide-react'
+import { ChevronDown, ChevronRight, MessageSquare, Plus, Trash2, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUS_CYCLE = { TO_DO: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: 'TO_DO' }
 
+// Solid filled pills matching v0 screenshot exactly
 const STATUS_STYLES = {
-  TO_DO:       'bg-muted text-muted-foreground hover:bg-muted/80',
-  IN_PROGRESS: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  DONE:        'bg-success text-success-foreground hover:bg-success/90',
+  TO_DO:       'bg-[#EAEAE0] text-[#666666]',
+  IN_PROGRESS: 'bg-[#E91E8C] text-white',
+  DONE:        'bg-green-500 text-white',
 }
 const STATUS_LABELS = { TO_DO: 'TO DO', IN_PROGRESS: 'IN PROGRESS', DONE: 'DONE' }
 
@@ -52,17 +53,17 @@ function CommentsModal({ open, onClose, task, gameId, onRefresh }) {
       <div className="space-y-4">
         <div className="space-y-3 max-h-72 overflow-y-auto">
           {task?.comments?.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-6">No comments yet.</p>
+            <p className="text-sm text-[#666] text-center py-6">No comments yet.</p>
           )}
           {task?.comments?.map((c) => (
-            <div key={c.id} className="bg-background rounded-lg p-3">
+            <div key={c.id} className="bg-[#F5F5F0] rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-foreground">{c.author?.name ?? 'Unknown'}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs font-semibold text-[#1C1C1C]">{c.author?.name ?? 'Unknown'}</span>
+                <span className="text-xs text-[#666]">
                   {new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-sm text-foreground">{c.body}</p>
+              <p className="text-sm text-[#1C1C1C]">{c.body}</p>
             </div>
           ))}
         </div>
@@ -71,7 +72,7 @@ function CommentsModal({ open, onClose, task, gameId, onRefresh }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Add a comment…"
-            className="flex-1 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 border border-[#E2E2DC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]"
           />
           <Button type="submit" size="sm" loading={loading} disabled={!body.trim()}>
             <Send size={14} />
@@ -107,7 +108,7 @@ function DeadlineModal({ open, onClose, task, gameId, onRefresh }) {
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full border border-[#E2E2DC] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]"
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSave} loading={loading}>Save</Button>
@@ -161,12 +162,16 @@ function TaskRow({ task, game, onRefresh, isLast }) {
 
   return (
     <>
-      <div className={`flex items-center gap-3 sm:gap-4 p-4 sm:px-5 hover:bg-muted/30 transition-colors group ${!isLast ? 'border-b border-border/50' : ''}`}>
-        {/* Status button */}
+      <div
+        className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-[#F5F5F0] transition-colors group ${
+          !isLast ? 'border-b border-[#E2E2DC]' : ''
+        }`}
+      >
+        {/* Status pill */}
         <button
           onClick={() => statusMutation.mutate({ status: STATUS_CYCLE[task.status] })}
           disabled={statusMutation.isPending}
-          className={`shrink-0 px-2 sm:px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide transition-all hover:scale-105 active:scale-95 ${STATUS_STYLES[task.status]}`}
+          className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide transition-all hover:opacity-90 active:scale-95 ${STATUS_STYLES[task.status]}`}
         >
           <span className="hidden sm:inline">{STATUS_LABELS[task.status]}</span>
           <span className="sm:hidden">
@@ -175,14 +180,18 @@ function TaskRow({ task, game, onRefresh, isLast }) {
         </button>
 
         {/* Task name */}
-        <span className={`flex-1 min-w-0 truncate text-sm ${task.status === 'DONE' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+        <span className={`flex-1 min-w-0 truncate text-sm ${
+          task.status === 'DONE' ? 'line-through text-[#999]' : 'text-[#1C1C1C]'
+        }`}>
           {taskName}
         </span>
 
         {/* Deadline */}
         <button
           onClick={() => setDeadlineOpen(true)}
-          className={`shrink-0 text-sm flex items-center gap-1 hover:underline ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}
+          className={`shrink-0 text-sm hover:underline ${
+            isOverdue ? 'text-[#E91E8C] font-semibold' : 'text-[#666]'
+          }`}
         >
           {deadline ? formatShortDate(deadline.toISOString()) : '—'}
         </button>
@@ -198,12 +207,12 @@ function TaskRow({ task, game, onRefresh, isLast }) {
               if (e.key === 'Enter') assigneeMutation.mutate({ assigneeName: assigneeVal })
               if (e.key === 'Escape') setEditingAssignee(false)
             }}
-            className="w-24 text-xs border border-primary rounded px-1.5 py-1 focus:outline-none"
+            className="w-24 text-xs border border-[#E91E8C] rounded px-1.5 py-1 focus:outline-none"
           />
         ) : (
           <button
             onClick={() => setEditingAssignee(true)}
-            className="shrink-0 text-sm text-muted-foreground hover:text-primary hidden sm:block w-24 truncate text-right transition-colors"
+            className="shrink-0 text-sm text-[#666] hover:text-[#E91E8C] hidden sm:block w-24 truncate text-right transition-colors"
           >
             {task.assigneeName ?? task.assignee?.name ?? 'Assign…'}
           </button>
@@ -212,7 +221,7 @@ function TaskRow({ task, game, onRefresh, isLast }) {
         {/* Comments */}
         <button
           onClick={() => setCommentOpen(true)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary shrink-0 transition-colors"
+          className="flex items-center gap-1 text-xs text-[#666] hover:text-[#E91E8C] shrink-0 transition-colors"
         >
           <MessageSquare size={13} />
           {commentCount > 0 && <span>{commentCount}</span>}
@@ -223,7 +232,7 @@ function TaskRow({ task, game, onRefresh, isLast }) {
           <button
             onClick={() => deleteMutation.mutate()}
             disabled={deleteMutation.isPending}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+            className="opacity-0 group-hover:opacity-100 text-[#666] hover:text-red-500 transition-all shrink-0"
           >
             <Trash2 size={14} />
           </button>
@@ -258,34 +267,39 @@ function CategorySection({ category, tasks, game, onRefresh }) {
   })
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
-      {/* Category header */}
+    <div className="bg-white rounded-lg border border-[#E2E2DC] overflow-hidden">
+      {/* Header */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-[#F5F5F0] transition-colors"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {expanded
-            ? <ChevronDown className="w-5 h-5 text-primary shrink-0" />
-            : <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+            ? <ChevronDown className="w-5 h-5 text-[#E91E8C] shrink-0" />
+            : <ChevronRight className="w-5 h-5 text-[#666] shrink-0" />
           }
-          <h3 className="font-display text-base sm:text-lg tracking-wider truncate">{category}</h3>
+          <h3
+            className="text-base sm:text-lg font-bold tracking-wider truncate text-[#1C1C1C]"
+            style={{ fontFamily: 'Oswald, sans-serif' }}
+          >
+            {category}
+          </h3>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          <span className="text-sm text-muted-foreground hidden sm:inline">{done}/{total}</span>
-          <div className="w-20 sm:w-32 h-2 bg-muted rounded-full overflow-hidden">
+          <span className="text-sm text-[#666] hidden sm:inline">{done}/{total}</span>
+          <div className="w-20 sm:w-32 h-2 bg-[#EAEAE0] rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary/70 rounded-full transition-all duration-300"
-              style={{ width: `${pct}%` }}
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${pct}%`, backgroundColor: 'rgba(233,30,140,0.6)' }}
             />
           </div>
-          <span className="text-sm font-medium w-10 text-right">{pct}%</span>
+          <span className="text-sm font-medium w-10 text-right text-[#1C1C1C]">{pct}%</span>
         </div>
       </button>
 
       {/* Task list */}
       {expanded && (
-        <div className="border-t border-border">
+        <div className="border-t border-[#E2E2DC]">
           {tasks.map((task, index) => (
             <TaskRow
               key={task.id}
@@ -296,9 +310,8 @@ function CategorySection({ category, tasks, game, onRefresh }) {
             />
           ))}
 
-          {/* Add task */}
           {addingTask ? (
-            <div className="flex gap-2 p-4 border-t border-border/50">
+            <div className="flex gap-2 p-4 border-t border-[#E2E2DC]">
               <input
                 autoFocus
                 value={newTaskName}
@@ -308,7 +321,7 @@ function CategorySection({ category, tasks, game, onRefresh }) {
                   if (e.key === 'Escape') { setAddingTask(false); setNewTaskName('') }
                 }}
                 placeholder="Task name…"
-                className="flex-1 text-sm border border-primary rounded-lg px-3 py-1.5 focus:outline-none"
+                className="flex-1 text-sm border border-[#E91E8C] rounded-lg px-3 py-1.5 focus:outline-none"
               />
               <Button size="sm" onClick={() => newTaskName.trim() && addMutation.mutate(newTaskName.trim())} loading={addMutation.isPending}>Add</Button>
               <Button size="sm" variant="ghost" onClick={() => { setAddingTask(false); setNewTaskName('') }}>Cancel</Button>
@@ -316,7 +329,7 @@ function CategorySection({ category, tasks, game, onRefresh }) {
           ) : (
             <button
               onClick={() => setAddingTask(true)}
-              className="flex items-center gap-1.5 p-4 text-sm text-muted-foreground hover:text-primary transition-colors border-t border-border/50 w-full"
+              className="flex items-center gap-1.5 px-4 sm:px-5 py-3.5 text-sm text-[#666] hover:text-[#E91E8C] transition-colors border-t border-[#E2E2DC] w-full"
             >
               <Plus size={14} />
               Add task
@@ -344,18 +357,28 @@ export default function PreBoutTab({ game, onRefresh }) {
 
   return (
     <div className="space-y-6">
-      {/* Overall progress */}
-      <div className="bg-card rounded-lg p-4 sm:p-6 border border-border">
+      {/* Overall progress card */}
+      <div className="bg-white rounded-lg border border-[#E2E2DC] p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="font-display text-lg tracking-wider uppercase">Overall Progress</h2>
-            <p className="text-muted-foreground text-sm mt-1">{done} of {total} tasks completed</p>
+            <h2
+              className="text-lg font-bold tracking-wider uppercase text-[#1C1C1C]"
+              style={{ fontFamily: 'Oswald, sans-serif' }}
+            >
+              Overall Progress
+            </h2>
+            <p className="text-sm text-[#666] mt-1">{done} of {total} tasks completed</p>
           </div>
-          <div className="text-3xl sm:text-4xl font-display font-bold text-primary">{pct}%</div>
-        </div>
-        <div className="mt-4 h-3 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-500"
+            className="text-3xl sm:text-4xl font-bold text-[#E91E8C] shrink-0"
+            style={{ fontFamily: 'Oswald, sans-serif' }}
+          >
+            {pct}%
+          </div>
+        </div>
+        <div className="mt-4 h-3 bg-[#EAEAE0] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#E91E8C] rounded-full transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -363,7 +386,7 @@ export default function PreBoutTab({ game, onRefresh }) {
 
       {/* Categories */}
       {categories.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">No tasks found for this game.</div>
+        <div className="text-center py-12 text-[#666] text-sm">No tasks found for this game.</div>
       ) : (
         <div className="space-y-4">
           {categories.map((cat) => (

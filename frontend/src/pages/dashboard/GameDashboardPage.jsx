@@ -12,11 +12,11 @@ import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings } f
 import toast from 'react-hot-toast'
 
 const TABS = [
-  { id: 'Pre-Bout',   label: 'PRE-BOUT',   icon: ClipboardList },
-  { id: 'On the Day', label: 'ON THE DAY',  icon: Calendar },
-  { id: 'Rosters',    label: 'ROSTERS',     icon: Users },
-  { id: 'Matches',    label: 'MATCHES',     icon: Trophy },
-  { id: 'Settings',   label: 'SETTINGS',    icon: Settings },
+  { id: 'Pre-Bout',   label: 'PRE-BOUT',  icon: ClipboardList },
+  { id: 'On the Day', label: 'ON THE DAY', icon: Calendar },
+  { id: 'Rosters',    label: 'ROSTERS',    icon: Users },
+  { id: 'Matches',    label: 'MATCHES',    icon: Trophy },
+  { id: 'Settings',   label: 'SETTINGS',   icon: Settings },
 ]
 
 function CopyLinkButton({ label, url }) {
@@ -30,10 +30,10 @@ function CopyLinkButton({ label, url }) {
   return (
     <button
       onClick={copy}
-      className="flex items-center gap-2 px-3 py-1.5 bg-primary-foreground/10 hover:bg-primary-foreground/15 rounded text-sm transition-colors border border-primary-foreground/20"
+      className="flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors border border-white/30 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-primary-foreground" /> : <Copy className="w-3.5 h-3.5 text-primary-foreground/70" />}
-      <span className="text-primary-foreground/70 text-xs">{label}</span>
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      {label}
     </button>
   )
 }
@@ -59,9 +59,9 @@ export default function GameDashboardPage() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="h-24 bg-primary animate-pulse" />
+        <div className="h-24 bg-[#E91E8C] animate-pulse" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="h-96 bg-card border border-border rounded-lg animate-pulse" />
+          <div className="h-96 bg-white border border-[#E2E2DC] rounded-lg animate-pulse" />
         </div>
       </Layout>
     )
@@ -71,7 +71,7 @@ export default function GameDashboardPage() {
     return (
       <Layout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <p className="text-muted-foreground text-sm">Game not found or you don&apos;t have access.</p>
+          <p className="text-[#666] text-sm">Game not found or you don&apos;t have access.</p>
         </div>
       </Layout>
     )
@@ -82,21 +82,24 @@ export default function GameDashboardPage() {
   return (
     <Layout>
       {/* Pink event title bar */}
-      <div className="bg-primary">
+      <div style={{ backgroundColor: '#E91E8C' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary-foreground/20 text-primary-foreground/90">
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-white/20 text-white/90">
                   {isTournament ? <Trophy className="w-3 h-3" /> : <Home className="w-3 h-3" />}
                   {isTournament ? 'Tournament' : 'Home Game'}
                 </span>
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold uppercase tracking-wide text-primary-foreground">
+              <h1
+                className="text-2xl sm:text-3xl font-bold uppercase tracking-wide text-white"
+                style={{ fontFamily: 'Oswald, sans-serif' }}
+              >
                 {game.title}
               </h1>
               {game.eventDate && (
-                <div className="flex items-center gap-2 text-primary-foreground/80 mt-0.5">
+                <div className="flex items-center gap-2 text-white/80 mt-0.5">
                   <Calendar className="w-4 h-4" />
                   <span className="text-sm font-medium">
                     {formatDate(game.eventDate)}
@@ -105,10 +108,8 @@ export default function GameDashboardPage() {
                 </div>
               )}
             </div>
-
-            {/* Share links */}
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-primary-foreground/60">Share:</span>
+              <span className="text-xs text-white/60">Share:</span>
               <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
               <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
             </div>
@@ -117,17 +118,18 @@ export default function GameDashboardPage() {
       </div>
 
       {/* Sticky tab bar */}
-      <div className="bg-card border-b border-border sticky top-14 z-30">
+      <div className="bg-white border-b border-[#E2E2DC] sticky top-14 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex gap-1 overflow-x-auto -mb-px">
+          <nav className="flex overflow-x-auto -mb-px">
             {TABS.map(({ id: tabId, label, icon: Icon }) => (
               <button
                 key={tabId}
                 onClick={() => setActiveTab(tabId)}
-                className={`flex items-center gap-2 px-4 py-4 font-display text-sm tracking-wider whitespace-nowrap transition-colors border-b-[3px] ${
+                style={{ fontFamily: 'Oswald, sans-serif' }}
+                className={`flex items-center gap-2 px-4 py-4 text-sm tracking-wider whitespace-nowrap border-b-[3px] transition-colors ${
                   activeTab === tabId
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                    ? 'border-[#E91E8C] text-[#E91E8C]'
+                    : 'border-transparent text-[#666] hover:text-[#1C1C1C] hover:border-[#EAEAE0]'
                 }`}
               >
                 <Icon className="w-4 h-4" />
