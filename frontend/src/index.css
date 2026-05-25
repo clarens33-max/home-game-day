@@ -2,28 +2,26 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand */
-  --color-pink: #E91E8C;
-  --color-pink-dark: #c4167a;
-  --color-dark: #1C1C1C;
-  --color-cream: #F5F5F0;
-  --color-border: #E8E8E2;
-  --color-muted: #999999;
-  --color-success: #22a24a;
-
-  /* Semantic tokens */
-  --color-background: #F5F5F0;
-  --color-card: #ffffff;
-  --color-foreground: #1C1C1C;
-  --color-primary: #E91E8C;
-  --color-primary-foreground: #ffffff;
-  --color-destructive: #dc2626;
-
   /* Fonts */
   --font-display: 'Oswald', sans-serif;
   --font-sans: 'Inter', sans-serif;
-  --font-heading: 'Oswald', sans-serif;
-  --font-body: 'Inter', sans-serif;
+
+  /* Color tokens */
+  --color-background: #F5F5F0;
+  --color-foreground: #1C1C1C;
+  --color-card: #ffffff;
+  --color-card-foreground: #1C1C1C;
+  --color-primary: #E91E8C;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #EAEAE0;
+  --color-muted-foreground: #666666;
+  --color-border: #E2E2DC;
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --color-header: #1C1C1C;
+  --color-header-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
 
   /* Radius */
   --radius: 0.5rem;
@@ -33,7 +31,7 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #F7F7F5;
+  background: #F5F5F0;
   color: #1C1C1C;
   min-height: 100vh;
   font-size: 15px;

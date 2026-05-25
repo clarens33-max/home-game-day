@@ -1,31 +1,19 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  updateTask,
-  addTask,
-  deleteTask,
-  addComment,
-} from '../../../api/games'
+import { updateTask, addTask, deleteTask, addComment } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
-import {
-  ChevronDown,
-  ChevronRight,
-  Calendar,
-  MessageSquare,
-  Plus,
-  Trash2,
-  Send,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, Calendar, MessageSquare, Plus, Trash2, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUS_CYCLE = { TO_DO: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: 'TO_DO' }
+
 const STATUS_STYLES = {
-  TO_DO: 'bg-gray-200 text-gray-600 hover:bg-gray-300',
-  IN_PROGRESS: 'bg-[#E91E8C] text-white hover:bg-[#c4167a]',
-  DONE: 'bg-green-500 text-white hover:bg-green-600',
+  TO_DO:       'bg-muted text-muted-foreground hover:bg-muted/80',
+  IN_PROGRESS: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  DONE:        'bg-success text-success-foreground hover:bg-success/90',
 }
-const STATUS_LABELS = { TO_DO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
+const STATUS_LABELS = { TO_DO: 'TO DO', IN_PROGRESS: 'IN PROGRESS', DONE: 'DONE' }
 
 function formatShortDate(dateStr) {
   if (!dateStr) return null
@@ -62,38 +50,28 @@ function CommentsModal({ open, onClose, task, gameId, onRefresh }) {
   return (
     <Modal open={open} onClose={onClose} title={task?.name ?? task?.template?.name ?? 'Task'} size="lg">
       <div className="space-y-4">
-        {/* Comments list */}
         <div className="space-y-3 max-h-72 overflow-y-auto">
           {task?.comments?.length === 0 && (
-            <p className="text-sm text-[#999] text-center py-6">No comments yet.</p>
+            <p className="text-sm text-muted-foreground text-center py-6">No comments yet.</p>
           )}
           {task?.comments?.map((c) => (
-            <div key={c.id} className="bg-[#F7F7F5] rounded-lg p-3">
+            <div key={c.id} className="bg-background rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-[#1C1C1C]">
-                  {c.author?.name ?? 'Unknown'}
-                </span>
-                <span className="text-xs text-[#999]">
-                  {new Date(c.createdAt).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                <span className="text-xs font-semibold text-foreground">{c.author?.name ?? 'Unknown'}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-sm text-[#1C1C1C]">{c.body}</p>
+              <p className="text-sm text-foreground">{c.body}</p>
             </div>
           ))}
         </div>
-
-        {/* Add comment */}
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Add a comment…"
-            className="flex-1 border border-[#EAEAE4] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]"
+            className="flex-1 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <Button type="submit" size="sm" loading={loading} disabled={!body.trim()}>
             <Send size={14} />
@@ -105,9 +83,7 @@ function CommentsModal({ open, onClose, task, gameId, onRefresh }) {
 }
 
 function DeadlineModal({ open, onClose, task, gameId, onRefresh }) {
-  const [value, setValue] = useState(
-    task?.deadlineOverride ? task.deadlineOverride.slice(0, 10) : ''
-  )
+  const [value, setValue] = useState(task?.deadlineOverride ? task.deadlineOverride.slice(0, 10) : '')
   const [loading, setLoading] = useState(false)
 
   const handleSave = async () => {
@@ -131,14 +107,12 @@ function DeadlineModal({ open, onClose, task, gameId, onRefresh }) {
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="w-full border border-[#EAEAE4] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]"
+          className="w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSave} loading={loading}>Save</Button>
           {value && (
-            <Button size="sm" variant="ghost" onClick={() => { setValue(''); }}>
-              Clear override
-            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setValue('')}>Clear override</Button>
           )}
         </div>
       </div>
@@ -146,7 +120,7 @@ function DeadlineModal({ open, onClose, task, gameId, onRefresh }) {
   )
 }
 
-function TaskRow({ task, game, onRefresh }) {
+function TaskRow({ task, game, onRefresh, isLast }) {
   const queryClient = useQueryClient()
   const [commentOpen, setCommentOpen] = useState(false)
   const [deadlineOpen, setDeadlineOpen] = useState(false)
@@ -157,16 +131,13 @@ function TaskRow({ task, game, onRefresh }) {
   today.setHours(0, 0, 0, 0)
   const deadline = getDeadline(task, game.eventDate)
   const isOverdue = deadline && deadline < today && task.status !== 'DONE'
-
   const taskName = task.name ?? task.template?.name ?? 'Unnamed task'
   const commentCount = task.comments?.length ?? 0
   const isCustom = !task.templateId
 
   const statusMutation = useMutation({
     mutationFn: ({ status }) => updateTask(game.id, task.id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game', game.id] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['game', game.id] }),
     onError: () => toast.error('Failed to update task'),
   })
 
@@ -175,7 +146,6 @@ function TaskRow({ task, game, onRefresh }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game', game.id] })
       setEditingAssignee(false)
-      toast.success('Assignee updated')
     },
     onError: () => toast.error('Failed to update assignee'),
   })
@@ -191,29 +161,29 @@ function TaskRow({ task, game, onRefresh }) {
 
   return (
     <>
-      <div className="flex items-center gap-3 py-3 px-4 hover:bg-[#F5F5F0] group transition-colors border-t border-[#E8E8E2] first:border-t-0">
-        {/* Status cycle button */}
+      <div className={`flex items-center gap-3 sm:gap-4 p-4 sm:px-5 hover:bg-muted/30 transition-colors group ${!isLast ? 'border-b border-border/50' : ''}`}>
+        {/* Status button */}
         <button
           onClick={() => statusMutation.mutate({ status: STATUS_CYCLE[task.status] })}
-          className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${STATUS_STYLES[task.status]}`}
           disabled={statusMutation.isPending}
+          className={`shrink-0 px-2 sm:px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide transition-all hover:scale-105 active:scale-95 ${STATUS_STYLES[task.status]}`}
         >
-          {STATUS_LABELS[task.status]}
+          <span className="hidden sm:inline">{STATUS_LABELS[task.status]}</span>
+          <span className="sm:hidden">
+            {task.status === 'TO_DO' ? 'TD' : task.status === 'IN_PROGRESS' ? 'IP' : 'DN'}
+          </span>
         </button>
 
         {/* Task name */}
-        <span className={`flex-1 text-sm ${task.status === 'DONE' ? 'line-through text-[#999]' : 'text-[#1C1C1C]'}`}>
+        <span className={`flex-1 min-w-0 truncate text-sm ${task.status === 'DONE' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
           {taskName}
         </span>
 
         {/* Deadline */}
         <button
           onClick={() => setDeadlineOpen(true)}
-          className={`flex items-center gap-1 text-xs shrink-0 hover:underline ${
-            isOverdue ? 'text-red-500 font-medium' : 'text-[#999]'
-          }`}
+          className={`shrink-0 text-sm flex items-center gap-1 hover:underline ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}
         >
-          <Calendar size={11} />
           {deadline ? formatShortDate(deadline.toISOString()) : '—'}
         </button>
 
@@ -228,12 +198,12 @@ function TaskRow({ task, game, onRefresh }) {
               if (e.key === 'Enter') assigneeMutation.mutate({ assigneeName: assigneeVal })
               if (e.key === 'Escape') setEditingAssignee(false)
             }}
-            className="w-28 text-xs border border-[#E91E8C] rounded px-1.5 py-1 focus:outline-none"
+            className="w-24 text-xs border border-primary rounded px-1.5 py-1 focus:outline-none"
           />
         ) : (
           <button
             onClick={() => setEditingAssignee(true)}
-            className="text-xs text-[#999] hover:text-[#E91E8C] shrink-0 transition-colors max-w-[90px] truncate"
+            className="shrink-0 text-sm text-muted-foreground hover:text-primary hidden sm:block w-24 truncate text-right transition-colors"
           >
             {task.assigneeName ?? task.assignee?.name ?? 'Assign…'}
           </button>
@@ -242,7 +212,7 @@ function TaskRow({ task, game, onRefresh }) {
         {/* Comments */}
         <button
           onClick={() => setCommentOpen(true)}
-          className="flex items-center gap-1 text-xs text-[#999] hover:text-[#E91E8C] shrink-0 transition-colors"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary shrink-0 transition-colors"
         >
           <MessageSquare size={13} />
           {commentCount > 0 && <span>{commentCount}</span>}
@@ -252,28 +222,16 @@ function TaskRow({ task, game, onRefresh }) {
         {isCustom && (
           <button
             onClick={() => deleteMutation.mutate()}
-            className="opacity-0 group-hover:opacity-100 text-[#999] hover:text-red-500 transition-all shrink-0"
             disabled={deleteMutation.isPending}
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
           >
             <Trash2 size={14} />
           </button>
         )}
       </div>
 
-      <CommentsModal
-        open={commentOpen}
-        onClose={() => setCommentOpen(false)}
-        task={task}
-        gameId={game.id}
-        onRefresh={onRefresh}
-      />
-      <DeadlineModal
-        open={deadlineOpen}
-        onClose={() => setDeadlineOpen(false)}
-        task={task}
-        gameId={game.id}
-        onRefresh={onRefresh}
-      />
+      <CommentsModal open={commentOpen} onClose={() => setCommentOpen(false)} task={task} gameId={game.id} onRefresh={onRefresh} />
+      <DeadlineModal open={deadlineOpen} onClose={() => setDeadlineOpen(false)} task={task} gameId={game.id} onRefresh={onRefresh} />
     </>
   )
 }
@@ -300,47 +258,47 @@ function CategorySection({ category, tasks, game, onRefresh }) {
   })
 
   return (
-    <div className="bg-white border border-[#E8E8E2] rounded-xl overflow-hidden">
+    <div className="bg-card rounded-lg border border-border overflow-hidden">
       {/* Category header */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-4 hover:bg-[#F5F5F0] transition-colors"
+        className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-muted/50 transition-colors"
       >
-        <span className="text-[#E91E8C]">
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </span>
-        <span
-          className="flex-1 text-left font-bold uppercase tracking-wider text-[#1C1C1C]"
-          style={{ fontFamily: 'Oswald, sans-serif' }}
-        >
-          {category}
-        </span>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className={`text-xs font-medium hidden sm:inline ${done === total ? 'text-green-600' : 'text-[#999]'}`}>
-            {done}/{total}
-          </span>
-          <div className="w-20 sm:w-28 h-2 bg-[#E8E8E2] rounded-full overflow-hidden">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {expanded
+            ? <ChevronDown className="w-5 h-5 text-primary shrink-0" />
+            : <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          }
+          <h3 className="font-display text-base sm:text-lg tracking-wider truncate">{category}</h3>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <span className="text-sm text-muted-foreground hidden sm:inline">{done}/{total}</span>
+          <div className="w-20 sm:w-32 h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#E91E8C]/70 rounded-full transition-all duration-300"
+              className="h-full bg-primary/70 rounded-full transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-xs font-medium w-9 text-right text-[#1C1C1C]">
-            {pct}%
-          </span>
+          <span className="text-sm font-medium w-10 text-right">{pct}%</span>
         </div>
       </button>
 
-      {/* Task rows */}
+      {/* Task list */}
       {expanded && (
-        <div className="border-t border-[#E8E8E2]">
-          {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} game={game} onRefresh={onRefresh} />
+        <div className="border-t border-border">
+          {tasks.map((task, index) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              game={game}
+              onRefresh={onRefresh}
+              isLast={index === tasks.length - 1 && !addingTask}
+            />
           ))}
 
           {/* Add task */}
           {addingTask ? (
-            <div className="flex gap-2 mt-2 px-1">
+            <div className="flex gap-2 p-4 border-t border-border/50">
               <input
                 autoFocus
                 value={newTaskName}
@@ -350,23 +308,15 @@ function CategorySection({ category, tasks, game, onRefresh }) {
                   if (e.key === 'Escape') { setAddingTask(false); setNewTaskName('') }
                 }}
                 placeholder="Task name…"
-                className="flex-1 text-sm border border-[#E91E8C] rounded-lg px-3 py-1.5 focus:outline-none"
+                className="flex-1 text-sm border border-primary rounded-lg px-3 py-1.5 focus:outline-none"
               />
-              <Button
-                size="sm"
-                onClick={() => newTaskName.trim() && addMutation.mutate(newTaskName.trim())}
-                loading={addMutation.isPending}
-              >
-                Add
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setAddingTask(false); setNewTaskName('') }}>
-                Cancel
-              </Button>
+              <Button size="sm" onClick={() => newTaskName.trim() && addMutation.mutate(newTaskName.trim())} loading={addMutation.isPending}>Add</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setAddingTask(false); setNewTaskName('') }}>Cancel</Button>
             </div>
           ) : (
             <button
               onClick={() => setAddingTask(true)}
-              className="flex items-center gap-1.5 mt-2 px-3 py-1.5 text-sm text-[#999] hover:text-[#E91E8C] transition-colors"
+              className="flex items-center gap-1.5 p-4 text-sm text-muted-foreground hover:text-primary transition-colors border-t border-border/50 w-full"
             >
               <Plus size={14} />
               Add task
@@ -384,7 +334,6 @@ export default function PreBoutTab({ game, onRefresh }) {
   const done = tasks.filter((t) => t.status === 'DONE').length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
-  // Group by category
   const grouped = {}
   for (const task of tasks) {
     const cat = task.template?.category ?? task.category ?? 'General'
@@ -394,29 +343,19 @@ export default function PreBoutTab({ game, onRefresh }) {
   const categories = Object.keys(grouped)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Overall progress */}
-      <div className="bg-white border border-[#E8E8E2] rounded-xl p-5 sm:p-6">
+      <div className="bg-card rounded-lg p-4 sm:p-6 border border-border">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2
-              className="text-base font-semibold uppercase tracking-wider text-[#1C1C1C]"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              Overall Progress
-            </h2>
-            <p className="text-sm text-[#999] mt-1">{done} of {total} tasks completed</p>
+            <h2 className="font-display text-lg tracking-wider uppercase">Overall Progress</h2>
+            <p className="text-muted-foreground text-sm mt-1">{done} of {total} tasks completed</p>
           </div>
-          <div
-            className="text-4xl sm:text-5xl font-bold text-[#E91E8C] shrink-0"
-            style={{ fontFamily: 'Oswald, sans-serif' }}
-          >
-            {pct}%
-          </div>
+          <div className="text-3xl sm:text-4xl font-display font-bold text-primary">{pct}%</div>
         </div>
-        <div className="mt-4 h-3 bg-[#E8E8E2] rounded-full overflow-hidden">
+        <div className="mt-4 h-3 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#E91E8C] rounded-full transition-all duration-500"
+            className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -424,19 +363,13 @@ export default function PreBoutTab({ game, onRefresh }) {
 
       {/* Categories */}
       {categories.length === 0 ? (
-        <div className="text-center py-12 text-[#999] text-sm">
-          No tasks found for this game.
-        </div>
+        <div className="text-center py-12 text-muted-foreground text-sm">No tasks found for this game.</div>
       ) : (
-        categories.map((cat) => (
-          <CategorySection
-            key={cat}
-            category={cat}
-            tasks={grouped[cat]}
-            game={game}
-            onRefresh={onRefresh}
-          />
-        ))
+        <div className="space-y-4">
+          {categories.map((cat) => (
+            <CategorySection key={cat} category={cat} tasks={grouped[cat]} game={game} onRefresh={onRefresh} />
+          ))}
+        </div>
       )}
     </div>
   )

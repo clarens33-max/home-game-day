@@ -10,30 +10,25 @@ export default function Layout({ children }) {
   const onGamePage = /^\/games\/[^/]/.test(location.pathname)
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F7F5]">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#1C1C1C] shadow-md">
+      <header className="sticky top-0 z-40 bg-header shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           {/* Left: logo + back link */}
           <div className="flex items-center gap-4">
-            <Link
-              to="/"
-              className="select-none"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              <div className="text-lg font-bold tracking-tight leading-none">
-                <span className="text-white">HOME</span>
-                <span className="text-[#E91E8C]">GAME</span>
-                <span className="text-white"> DAY</span>
-              </div>
-              <div className="text-[9px] text-white/40 tracking-widest uppercase mt-0.5">
+            <Link to="/" className="select-none flex flex-col">
+              <h1 className="font-display text-xl font-bold tracking-tight leading-none">
+                <span className="text-header-foreground">HOME</span>
+                <span className="text-primary">GAME</span>
+              </h1>
+              <span className="text-[10px] text-header-foreground/50 tracking-widest uppercase">
                 Roller Derby Event Ops
-              </div>
+              </span>
             </Link>
             {onGamePage && (
               <Link
                 to="/"
-                className="flex items-center gap-1 text-[#999] hover:text-white transition-colors text-sm"
+                className="flex items-center gap-1 text-muted-foreground hover:text-header-foreground transition-colors text-sm"
               >
                 <ChevronLeft size={16} />
                 <span>All games</span>
@@ -44,10 +39,10 @@ export default function Layout({ children }) {
           {/* Right: user + logout */}
           {user && (
             <div className="flex items-center gap-3">
-              <span className="text-[#999] text-sm hidden sm:block">{user.name ?? user.email}</span>
+              <span className="text-muted-foreground text-sm hidden sm:block">{user.name ?? user.email}</span>
               <button
                 onClick={logout}
-                className="flex items-center gap-1.5 text-[#999] hover:text-white transition-colors text-sm px-2 py-1 rounded hover:bg-white/10"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-header-foreground transition-colors text-sm px-2 py-1 rounded hover:bg-header-foreground/10"
               >
                 <LogOut size={16} />
                 <span className="hidden sm:inline">Log out</span>
