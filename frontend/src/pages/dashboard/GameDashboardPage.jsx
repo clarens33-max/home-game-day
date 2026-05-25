@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getGame } from '../../api/games'
+import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
 import PreBoutTab from './tabs/PreBoutTab'
 import OnTheDayTab from './tabs/OnTheDayTab'
@@ -40,6 +41,7 @@ function CopyLinkButton({ label, url }) {
 
 export default function GameDashboardPage() {
   const { id } = useParams()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('Pre-Bout')
 
@@ -105,13 +107,14 @@ export default function GameDashboardPage() {
               <span className="text-xs text-primary-foreground/60">Share:</span>
               <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
               <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
+              <CopyLinkButton label="Volunteers" url={`${base}/v/${game.volunteerToken}`} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs — exact v0 */}
-      <div className="bg-card border-b border-border sticky top-14 z-10">
+      <div className="bg-card border-b border-border sticky top-[76px] z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1 overflow-x-auto scrollbar-hide -mb-px">
             {tabs.map((tab) => (
@@ -138,7 +141,7 @@ export default function GameDashboardPage() {
         {activeTab === 'On the Day' && <OnTheDayTab  game={game} onRefresh={onRefresh} />}
         {activeTab === 'Rosters'    && <RostersTab   game={game} onRefresh={onRefresh} />}
         {activeTab === 'Matches'    && <MatchesTab   game={game} onRefresh={onRefresh} />}
-        {activeTab === 'Settings'   && <SettingsTab  game={game} onRefresh={onRefresh} />}
+        {activeTab === 'Settings'   && <SettingsTab  game={game} onRefresh={onRefresh} currentUserId={user?.id} />}
       </main>
     </Layout>
   )
