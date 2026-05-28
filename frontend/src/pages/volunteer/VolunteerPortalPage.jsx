@@ -2,12 +2,17 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getVolunteerPortal, volunteerUpdateTask, volunteerUpdateDayRoleSlot } from '../../api/games'
-import { Check, Clock, Circle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, Clock, Circle, ChevronDown, ChevronUp, Users, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return null
+  return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 const STATUS_CONFIG = {
@@ -45,13 +50,18 @@ function TaskCard({ task, token, onRefresh }) {
     updateMutation.mutate({ assigneeName: claimName.trim(), status: status === 'TO_DO' ? 'IN_PROGRESS' : status })
     setClaimName('')
     setShowClaim(false)
-    toast.success('You\'re on it!')
+    toast.success("You're on it!")
+  }
+
+  const handleUnclaim = () => {
+    updateMutation.mutate({ assigneeName: null, status: 'TO_DO' })
+    toast.success('Unassigned')
   }
 
   return (
     <div className={`rounded-xl border p-4 transition-colors ${status === 'DONE' ? 'border-green-200 bg-green-50/30' : 'border-[#EAEAE4] bg-white'}`}>
       <div className="flex items-start gap-3">
-        {/* Status toggle button */}
+        {/* Status toggle */}
         <button
           onClick={cycleStatus}
           disabled={updateMutation.isPending}
@@ -67,18 +77,30 @@ function TaskCard({ task, token, onRefresh }) {
             {taskName}
           </p>
           {task.assigneeName && (
-            <p className="text-xs text-[#999] mt-0.5">Assigned to: {task.assigneeName}</p>
+            <p className="text-xs text-[#999] mt-0.5">
+              Assigned to: <span className="font-medium text-[#E91E8C]">{task.assigneeName}</span>
+            </p>
           )}
         </div>
 
-        {/* Volunteer button */}
+        {/* Volunteer / claim actions */}
         {status !== 'DONE' && (
-          <button
-            onClick={() => setShowClaim(v => !v)}
-            className="shrink-0 text-xs text-[#E91E8C] hover:underline font-medium"
-          >
-            {task.assigneeName ? 'Reassign' : 'Volunteer'}
-          </button>
+          <div className="shrink-0 flex gap-2">
+            <button
+              onClick={() => setShowClaim(v => !v)}
+              className="text-xs text-[#E91E8C] hover:underline font-medium"
+            >
+              {task.assigneeName ? 'Reassign' : 'Volunteer'}
+            </button>
+            {task.assigneeName && (
+              <button
+                onClick={handleUnclaim}
+                className="text-xs text-[#999] hover:text-[#1C1C1C]"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -157,20 +179,38 @@ function DayRoleSlot({ role, slot, slotIndex, token, onRefresh }) {
 
   const currentName = slot?.personName
 
+  const handleClear = () => {
+    mutation.mutate(null)
+    toast.success('Cleared')
+  }
+
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
         {currentName ? (
-          <span className="text-sm text-[#1C1C1C] font-medium">{currentName}</span>
+          <>
+            <span className="text-sm font-medium text-[#E91E8C]">{currentName}</span>
+            <button
+              onClick={() => { setName(currentName); setEditing(true) }}
+              className="text-xs text-[#999] hover:text-[#1C1C1C]"
+            >
+              Change
+            </button>
+            <button onClick={handleClear} className="text-xs text-[#999] hover:text-[#1C1C1C]">
+              Clear
+            </button>
+          </>
         ) : (
-          <span className="text-sm text-[#999] italic">Open</span>
+          <>
+            <span className="text-sm text-[#999] italic">Open</span>
+            <button
+              onClick={() => { setName(''); setEditing(true) }}
+              className="text-xs text-[#E91E8C] hover:underline font-medium"
+            >
+              Volunteer
+            </button>
+          </>
         )}
-        <button
-          onClick={() => { setName(currentName ?? ''); setEditing(true) }}
-          className="text-xs text-[#E91E8C] hover:underline"
-        >
-          {currentName ? 'Change' : 'Volunteer'}
-        </button>
       </div>
     )
   }
@@ -187,6 +227,20 @@ function DayRoleSlot({ role, slot, slotIndex, token, onRefresh }) {
       <button type="submit" className="px-2 py-1 bg-[#E91E8C] text-white text-xs rounded hover:opacity-90">Save</button>
       <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 border border-[#EAEAE4] text-xs rounded text-[#999]">Cancel</button>
     </form>
+  )
+}
+
+function SectionHeader({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="flex items-center gap-2 pb-2 mb-4 border-b border-[#EAEAE4]">
+      <Icon size={16} className="text-[#E91E8C] shrink-0" />
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#1C1C1C]" style={{ fontFamily: 'Oswald, sans-serif' }}>
+          {title}
+        </h2>
+        {subtitle && <p className="text-xs text-[#999]">{subtitle}</p>}
+      </div>
+    </div>
   )
 }
 
@@ -218,7 +272,7 @@ export default function VolunteerPortalPage() {
     )
   }
 
-  // Group tasks by category
+  // Group pre-bout tasks by category
   const tasksByCategory = (game.gameTasks ?? []).reduce((acc, task) => {
     const cat = task.category ?? task.template?.category ?? 'Other'
     if (!acc[cat]) acc[cat] = []
@@ -246,51 +300,54 @@ export default function VolunteerPortalPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
-        {/* Progress bar */}
+
+        {/* ── Section 1: Pre-Bout Checklist ── */}
         {totalTasks > 0 && (
           <div>
-            <div className="flex justify-between text-xs text-[#999] mb-1.5">
-              <span>Pre-bout tasks</span>
-              <span>{doneTasks}/{totalTasks} done</span>
-            </div>
-            <div className="h-2 bg-[#EAEAE4] rounded-full overflow-hidden">
+            <SectionHeader
+              icon={Check}
+              title="Pre-Bout Checklist"
+              subtitle={`${doneTasks} of ${totalTasks} tasks done`}
+            />
+
+            {/* Progress bar */}
+            <div className="h-2 bg-[#EAEAE4] rounded-full overflow-hidden mb-6">
               <div
                 className="h-full bg-[#E91E8C] rounded-full transition-all"
-                style={{ width: `${(doneTasks / totalTasks) * 100}%` }}
+                style={{ width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%` }}
               />
+            </div>
+
+            <div className="space-y-6">
+              {Object.entries(tasksByCategory).map(([category, tasks]) => (
+                <CategorySection
+                  key={category}
+                  category={category}
+                  tasks={tasks}
+                  token={token}
+                  onRefresh={onRefresh}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Tasks by category */}
-        {Object.keys(tasksByCategory).length > 0 && (
-          <div className="space-y-6">
-            {Object.entries(tasksByCategory).map(([category, tasks]) => (
-              <CategorySection
-                key={category}
-                category={category}
-                tasks={tasks}
-                token={token}
-                onRefresh={onRefresh}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* On-the-day roles */}
+        {/* ── Section 2: On-the-Day Roles ── */}
         {game.gameDayRoles?.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 border-b border-[#EAEAE4] pb-2" style={{ fontFamily: 'Oswald, sans-serif' }}>
-              On-the-Day Roles
-            </h2>
+            <SectionHeader
+              icon={Users}
+              title="On-the-Day Roles"
+              subtitle="Sign up for a role on the day"
+            />
             <div className="space-y-3">
               {game.gameDayRoles.map(role => {
                 const roleName = role.name ?? role.template?.name ?? 'Role'
                 const headcount = role.headcount ?? role.template?.headcount ?? 'x1'
-                // Determine how many slots to show
                 let slotCount = 1
-                if (headcount === 'ALL' || headcount === 'ANYONE') slotCount = 1
-                else {
+                if (headcount === 'ALL' || headcount === 'ANYONE') {
+                  slotCount = 1
+                } else {
                   const n = parseInt(headcount.replace('x', ''))
                   if (!isNaN(n)) slotCount = n
                 }
@@ -320,6 +377,41 @@ export default function VolunteerPortalPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Section 3: Match Schedule ── */}
+        {game.matches?.length > 0 && (
+          <div>
+            <SectionHeader
+              icon={Calendar}
+              title="Match Schedule"
+              subtitle={`${game.matches.length} bout${game.matches.length !== 1 ? 's' : ''} on the day`}
+            />
+            <div className="space-y-2">
+              {game.matches.map((match, index) => (
+                <div key={match.id} className="bg-white border border-[#EAEAE4] rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1C1C1C]">
+                        Bout {index + 1}: {match.homeTeam} vs {match.awayTeam}
+                      </p>
+                      {match.notes && (
+                        <p className="text-xs text-[#999] mt-0.5">{match.notes}</p>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {match.scheduledTime && (
+                        <p className="text-sm font-medium text-[#E91E8C]">{formatTime(match.scheduledTime)}</p>
+                      )}
+                      {match.boutType && (
+                        <p className="text-xs text-[#999]">{match.boutType}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

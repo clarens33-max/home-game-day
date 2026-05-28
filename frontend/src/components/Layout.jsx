@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { LogOut, ChevronLeft } from 'lucide-react'
+import { LogOut, ChevronLeft, Shield } from 'lucide-react'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
@@ -32,6 +32,15 @@ export default function Layout({ children }) {
             >
               <ChevronLeft size={13} />
               <span>All games</span>
+            </Link>
+          )}
+          {user && (
+            <Link
+              to="/leagues"
+              className="flex items-center gap-1 text-[0.72rem] text-header-foreground/45 border border-header-foreground/15 rounded-[20px] px-3 py-1 hover:text-header-foreground/80 hover:border-header-foreground/35 transition-colors"
+            >
+              <Shield size={13} />
+              <span>Leagues</span>
             </Link>
           )}
           {user && (

@@ -4,7 +4,7 @@ import { getGames } from '../../api/games'
 import Layout from '../../components/Layout'
 import Button from '../../components/Button'
 import EmptyState from '../../components/EmptyState'
-import { Plus, MapPin, Users, Trophy, Home } from 'lucide-react'
+import { Plus, MapPin, Users, Trophy, Home, Shield } from 'lucide-react'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -30,7 +30,7 @@ function GameCard({ game }) {
       <div className={`h-1 w-full ${isTournament ? 'bg-amber-400' : 'bg-[#E91E8C]'}`} />
 
       <div className="p-5">
-        {/* Event type badge */}
+        {/* Event type badge + league */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <span
             className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -42,6 +42,11 @@ function GameCard({ game }) {
             {isTournament ? <Trophy size={11} /> : <Home size={11} />}
             {isTournament ? 'Tournament' : 'Home Game'}
           </span>
+          {game.league && (
+            <span className="inline-flex items-center gap-1 text-xs text-[#999]">
+              <Shield size={11} /> {game.league.name}
+            </span>
+          )}
         </div>
 
         {/* Title */}

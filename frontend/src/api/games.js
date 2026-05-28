@@ -42,6 +42,24 @@ export const guestSignWaiver = (token, skaterId, signatureData) =>
 // Public portal
 export const getPublicPortal = token => api.get(`/portal/public/${token}`).then(r => r.data)
 
+// Leagues
+export const getLeagues = () => api.get('/leagues').then(r => r.data)
+export const searchLeagues = (q) => api.get('/leagues/search', { params: { q } }).then(r => r.data)
+export const createLeague = (data) => api.post('/leagues', data).then(r => r.data)
+export const getLeague = (id) => api.get(`/leagues/${id}`).then(r => r.data)
+export const updateLeague = (id, data) => api.patch(`/leagues/${id}`, data).then(r => r.data)
+export const joinLeague = (id) => api.post(`/leagues/${id}/join`).then(r => r.data)
+export const approveMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'approve' }).then(r => r.data)
+export const rejectMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'reject' }).then(r => r.data)
+export const removeMember = (id, userId) => api.delete(`/leagues/${id}/members/${userId}`).then(r => r.data)
+export const seedBlueprint = (id) => api.post(`/leagues/${id}/blueprint/seed`).then(r => r.data)
+export const addBlueprintTask = (id, data) => api.post(`/leagues/${id}/blueprint/tasks`, data).then(r => r.data)
+export const updateBlueprintTask = (id, taskId, data) => api.patch(`/leagues/${id}/blueprint/tasks/${taskId}`, data).then(r => r.data)
+export const deleteBlueprintTask = (id, taskId) => api.delete(`/leagues/${id}/blueprint/tasks/${taskId}`).then(r => r.data)
+export const addBlueprintRole = (id, data) => api.post(`/leagues/${id}/blueprint/roles`, data).then(r => r.data)
+export const updateBlueprintRole = (id, roleId, data) => api.patch(`/leagues/${id}/blueprint/roles/${roleId}`, data).then(r => r.data)
+export const deleteBlueprintRole = (id, roleId) => api.delete(`/leagues/${id}/blueprint/roles/${roleId}`).then(r => r.data)
+
 // Volunteer portal
 export const getVolunteerPortal = token => api.get(`/portal/volunteer/${token}`).then(r => r.data)
 export const volunteerUpdateTask = (token, taskId, data) => api.patch(`/portal/volunteer/${token}/tasks/${taskId}`, data).then(r => r.data)

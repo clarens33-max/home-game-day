@@ -90,12 +90,6 @@ function RoleRow({ role, game, onRefresh }) {
   const headcount = parseHeadcount(headcountRaw)
   const name = role.template?.name ?? role.name
 
-  // Build slot array up to headcount
-  const slots = []
-  for (let i = 0; i < headcount; i++) {
-    slots.push(role.slots?.find((s) => s.slotIndex === i) ?? null)
-  }
-
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 px-4 border-b border-[#EAEAE4] last:border-b-0">
       <div className="flex items-center gap-3 min-w-[200px]">
@@ -105,16 +99,20 @@ function RoleRow({ role, game, onRefresh }) {
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
-        {slots.map((slot, i) => (
-          <SlotChip
-            key={i}
-            slot={slot}
-            roleId={role.id}
-            slotIndex={i}
-            game={game}
-            onRefresh={onRefresh}
-          />
-        ))}
+        {Array.from({ length: headcount }, (_, i) => {
+          const slotIndex = i + 1
+          const slot = role.slots?.find((s) => s.slotIndex === slotIndex) ?? null
+          return (
+            <SlotChip
+              key={slotIndex}
+              slot={slot}
+              roleId={role.id}
+              slotIndex={slotIndex}
+              game={game}
+              onRefresh={onRefresh}
+            />
+          )
+        })}
       </div>
     </div>
   )

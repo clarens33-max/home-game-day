@@ -18,11 +18,13 @@ model User {
   resetTokenExpires  DateTime?
   createdAt          DateTime  @default(now())
 
-  ownedGames    GameOwner[]
-  assignedTasks GameTask[]
-  dayRoleSlots  GameDayRoleSlot[]
-  comments      TaskComment[]
-  teamMemberships TeamMember[]
+  ownedGames        GameOwner[]
+  assignedTasks     GameTask[]
+  dayRoleSlots      GameDayRoleSlot[]
+  comments          TaskComment[]
+  teamMemberships   TeamMember[]
+  leagueOwnerships  League[]          @relation("LeagueOwner")
+  leagueMemberships LeagueMember[]
 }
 
 // ─── Games ──────────────────────────────────────────────────────────
@@ -41,6 +43,10 @@ model Game {
   logoUrl     String?
   ticketingUrl String?
   description String?
+
+  // Optional league association
+  leagueId    String?
+  league      League?   @relation(fields: [leagueId], references: [id])
 
   // Shareable tokens
   guestToken      String    @unique @default(uuid())
@@ -293,4 +299,72 @@ model PublicSection {
   content String
   order   Int    @default(0)
   visible Boolean @default(true)
+}
+
+// ─── Leagues ─────────────────────────────────────────────────────────
+
+model League {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  slackUrl    String?
+  discordUrl  String?
+
+  ownerId     String
+  owner       User     @relation("LeagueOwner", fields: [ownerId], references: [id])
+
+  members         LeagueMember[]
+  games           Game[]
+  blueprintTasks  BlueprintTask[]
+  blueprintRoles  BlueprintDayRole[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LeagueMember {
+  id        String             @id @default(uuid())
+  leagueId  String
+  league    League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      LeagueMemberRole   @default(MEMBER)
+  status    LeagueMemberStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+
+  @@unique([leagueId, userId])
+}
+
+enum LeagueMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum LeagueMemberStatus {
+  PENDING
+  ACTIVE
+}
+
+// ─── League Blueprint ────────────────────────────────────────────────
+
+model BlueprintTask {
+  id           String     @id @default(uuid())
+  leagueId     String
+  league       League     @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  category     String
+  name         String
+  leadTimeDays Int?
+  isRequired   Boolean    @default(false)
+  eventScope   EventScope @default(BOTH)
+  order        Int        @default(0)
+}
+
+model BlueprintDayRole {
+  id        String @id @default(uuid())
+  leagueId  String
+  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  name      String
+  headcount String // "x1", "x2", "x4", "ALL", "ANYONE"
+  order     Int    @default(0)
 }

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { createGame } from '../../api/games'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { createGame, getLeagues } from '../../api/games'
 import Layout from '../../components/Layout'
 import Button from '../../components/Button'
+import { Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const eventTypes = [
@@ -24,6 +25,7 @@ const eventTypes = [
 export default function CreateGamePage() {
   const navigate = useNavigate()
   const [eventType, setEventType] = useState('HOME_GAME')
+  const [leagueId, setLeagueId] = useState('')
   const [form, setForm] = useState({
     title: '',
     homeTeamName: '',
@@ -33,6 +35,13 @@ export default function CreateGamePage() {
     venueAddress: '',
     ticketingUrl: '',
   })
+
+  const { data: myLeagues = [] } = useQuery({
+    queryKey: ['leagues'],
+    queryFn: getLeagues,
+    staleTime: 60_000,
+  })
+  const activeLeagues = myLeagues.filter(l => l.status === 'ACTIVE')
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
@@ -53,7 +62,7 @@ export default function CreateGamePage() {
       toast.error('Title and event date are required')
       return
     }
-    mutation.mutate({ eventType, ...form })
+    mutation.mutate({ eventType, ...form, ...(leagueId && { leagueId }) })
   }
 
   const inputClass =
@@ -110,6 +119,38 @@ export default function CreateGamePage() {
               })}
             </div>
           </div>
+
+          {/* Step 1b: League association */}
+          {activeLeagues.length > 0 && (
+            <div>
+              <h2
+                className="text-sm font-semibold uppercase tracking-wider text-[#999] mb-3"
+                style={{ fontFamily: 'Oswald, sans-serif' }}
+              >
+                League <span className="normal-case font-normal text-xs">(optional)</span>
+              </h2>
+              <div className="flex items-center gap-3 bg-white border border-[#EAEAE4] rounded-xl p-4">
+                <Shield size={20} className="text-[#E91E8C] shrink-0" />
+                <div className="flex-1">
+                  <select
+                    value={leagueId}
+                    onChange={e => setLeagueId(e.target.value)}
+                    className="w-full text-sm bg-transparent focus:outline-none text-[#1C1C1C]"
+                  >
+                    <option value="">No league — standalone game</option>
+                    {activeLeagues.map(({ league }) => (
+                      <option key={league.id} value={league.id}>{league.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {leagueId && (
+                <p className="text-xs text-[#999] mt-1.5 ml-1">
+                  Tasks and roles will be pre-filled from your league blueprint (if one exists).
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Step 2: Game details */}
           <div>

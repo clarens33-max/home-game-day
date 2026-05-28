@@ -1,7 +1,7 @@
 const router = require('express').Router()
 const prisma = require('../lib/prisma')
 
-// GET /api/portal/volunteer/:token — fetch tasks and day roles for volunteers
+// GET /api/portal/volunteer/:token — fetch tasks, day roles, and matches for volunteers
 router.get('/:token', async (req, res) => {
   const game = await prisma.game.findUnique({
     where: { volunteerToken: req.params.token },
@@ -17,6 +17,9 @@ router.get('/:token', async (req, res) => {
           template: true,
           slots: { orderBy: { slotIndex: 'asc' } },
         },
+        orderBy: { order: 'asc' },
+      },
+      matches: {
         orderBy: { order: 'asc' },
       },
     },

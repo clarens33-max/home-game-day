@@ -16,6 +16,7 @@ router.get('/', requireAuth, async (req, res) => {
     select: {
       id: true, slug: true, title: true, eventType: true, eventDate: true,
       homeTeamName: true, venueName: true, logoUrl: true,
+      leagueId: true, league: { select: { id: true, name: true } },
       _count: { select: { gameTasks: true } },
     },
   })
@@ -24,19 +25,69 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/games — create new game
 router.post('/', requireAuth, async (req, res) => {
-  const { title, eventType, eventDate, homeTeamName, venueName, venueAddress, venueMapUrl, doorsOpen, ticketingUrl, description } = req.body
+  const { title, eventType, eventDate, homeTeamName, venueName, venueAddress, venueMapUrl, doorsOpen, ticketingUrl, description, leagueId } = req.body
   if (!title || !eventType || !eventDate || !homeTeamName) {
     return res.status(400).json({ error: 'title, eventType, eventDate and homeTeamName are required' })
   }
 
-  // Load task templates matching event type
-  const templates = await prisma.taskTemplate.findMany({
-    where: { eventScope: { in: [eventType, 'BOTH'] } },
-    orderBy: { order: 'asc' },
-  })
+  // Validate league membership if leagueId provided
+  if (leagueId) {
+    const membership = await prisma.leagueMember.findUnique({
+      where: { leagueId_userId: { leagueId, userId: req.user.id } },
+    })
+    const isOwner = await prisma.league.findFirst({ where: { id: leagueId, ownerId: req.user.id } })
+    if (!membership?.status === 'ACTIVE' && !isOwner) {
+      return res.status(403).json({ error: 'Not an active member of this league' })
+    }
+  }
 
-  // Load day role templates
-  const dayRoles = await prisma.dayRoleTemplate.findMany({ orderBy: { order: 'asc' } })
+  // Load tasks: from league blueprint if available, else generic templates
+  let taskSeedData
+  let roleSeedData
+  if (leagueId) {
+    const [blueprintTasks, blueprintRoles] = await Promise.all([
+      prisma.blueprintTask.findMany({
+        where: { leagueId, eventScope: { in: [eventType, 'BOTH'] } },
+        orderBy: { order: 'asc' },
+      }),
+      prisma.blueprintDayRole.findMany({
+        where: { leagueId },
+        orderBy: { order: 'asc' },
+      }),
+    ])
+
+    if (blueprintTasks.length > 0) {
+      // Use league blueprint
+      taskSeedData = blueprintTasks.map(t => ({
+        category: t.category,
+        name: t.name,
+        status: 'TO_DO',
+        order: t.order,
+      }))
+      roleSeedData = blueprintRoles.map(r => ({
+        name: r.name,
+        headcount: r.headcount,
+        order: r.order,
+      }))
+    }
+  }
+
+  // Fall back to generic templates if no blueprint was found
+  if (!taskSeedData) {
+    const templates = await prisma.taskTemplate.findMany({
+      where: { eventScope: { in: [eventType, 'BOTH'] } },
+      orderBy: { order: 'asc' },
+    })
+    taskSeedData = templates.map(t => ({ templateId: t.id, status: 'TO_DO', order: t.order }))
+  }
+  if (!roleSeedData) {
+    const dayRoles = await prisma.dayRoleTemplate.findMany({ orderBy: { order: 'asc' } })
+    roleSeedData = dayRoles.map(r => ({ templateId: r.id, order: r.order }))
+  }
+
+  // Keep backward-compat variable names for the create block
+  const templates = taskSeedData
+  const dayRoles = roleSeedData
 
   const game = await prisma.game.create({
     data: {
@@ -51,22 +102,12 @@ router.post('/', requireAuth, async (req, res) => {
       venueMapUrl,
       ticketingUrl,
       description,
+      ...(leagueId && { leagueId }),
       owners: { create: { userId: req.user.id } },
-      // Seed tasks from templates
-      gameTasks: {
-        create: templates.map(t => ({
-          templateId: t.id,
-          status: 'TO_DO',
-          order: t.order,
-        })),
-      },
-      // Seed day roles
-      gameDayRoles: {
-        create: dayRoles.map(r => ({
-          templateId: r.id,
-          order: r.order,
-        })),
-      },
+      // Seed tasks (from league blueprint or generic templates)
+      gameTasks: { create: templates },
+      // Seed day roles (from league blueprint or generic templates)
+      gameDayRoles: { create: dayRoles },
       // Seed signs checklist
       signs: {
         create: [
