@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "npm run db:push && npm run db:seed && npm start"
+startCommand = "node src/scripts/premigrate.js && npm run db:push && npm run db:seed && npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
