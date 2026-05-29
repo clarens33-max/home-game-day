@@ -12,7 +12,7 @@ const eventTypes = [
     value: 'HOME_GAME',
     icon: '🏠',
     label: 'Home Game',
-    description: '2 teams, full WFTDA bouts',
+    description: 'Bouts hosted at your venue — any format, any number of games',
   },
   {
     value: 'TOURNAMENT',
@@ -62,7 +62,16 @@ export default function CreateGamePage() {
       toast.error('Title and event date are required')
       return
     }
-    mutation.mutate({ eventType, ...form, ...(leagueId && { leagueId }) })
+    // Combine date + time into a full ISO string so new Date() parses correctly
+    const doorsOpen = form.doorsOpen && form.eventDate
+      ? `${form.eventDate}T${form.doorsOpen}`
+      : null
+    mutation.mutate({
+      eventType,
+      ...form,
+      doorsOpen,
+      ...(leagueId && { leagueId }),
+    })
   }
 
   const inputClass =
