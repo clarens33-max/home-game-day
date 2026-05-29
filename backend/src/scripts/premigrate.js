@@ -49,35 +49,52 @@ async function main() {
     CREATE UNIQUE INDEX IF NOT EXISTS "Game_volunteerToken_key" ON "Game"("volunteerToken")
   `)
 
-  // Deduplicate TaskTemplate: keep only rows referenced by GameTask,
-  // or the first encountered for each (name, category) pair if none are referenced.
+  // Deduplicate TaskTemplate: for each (name, category) group, keep the min(id)
+  // as canonical; re-point any GameTask references to it; then delete the rest.
   console.log('[premigrate] Deduplicating TaskTemplate...')
   await prisma.$executeRawUnsafe(`
+    UPDATE "GameTask" gt
+    SET "templateId" = canonical."canonicalId"
+    FROM (
+      SELECT name, category, MIN(id) AS "canonicalId"
+      FROM "TaskTemplate"
+      GROUP BY name, category
+      HAVING COUNT(*) > 1
+    ) canonical
+    JOIN "TaskTemplate" tt
+      ON tt.name = canonical.name
+     AND tt.category = canonical.category
+     AND tt.id != canonical."canonicalId"
+    WHERE gt."templateId" = tt.id
+  `)
+  await prisma.$executeRawUnsafe(`
     DELETE FROM "TaskTemplate"
-    WHERE id IN (
-      SELECT id FROM (
-        SELECT id,
-               ROW_NUMBER() OVER (PARTITION BY name, category ORDER BY id) AS rn
-        FROM "TaskTemplate"
-        WHERE id NOT IN (SELECT COALESCE("templateId", '') FROM "GameTask" WHERE "templateId" IS NOT NULL)
-      ) dupes
-      WHERE rn > 1
+    WHERE id NOT IN (
+      SELECT MIN(id) FROM "TaskTemplate" GROUP BY name, category
     )
   `)
 
-  // Deduplicate DayRoleTemplate: keep only rows referenced by GameDayRole,
-  // or the first per name if none are referenced.
+  // Deduplicate DayRoleTemplate: for each name group, keep the min(id)
+  // as canonical; re-point any GameDayRole references to it; then delete the rest.
   console.log('[premigrate] Deduplicating DayRoleTemplate...')
   await prisma.$executeRawUnsafe(`
+    UPDATE "GameDayRole" gr
+    SET "templateId" = canonical."canonicalId"
+    FROM (
+      SELECT name, MIN(id) AS "canonicalId"
+      FROM "DayRoleTemplate"
+      GROUP BY name
+      HAVING COUNT(*) > 1
+    ) canonical
+    JOIN "DayRoleTemplate" dt
+      ON dt.name = canonical.name
+     AND dt.id != canonical."canonicalId"
+    WHERE gr."templateId" = dt.id
+  `)
+  await prisma.$executeRawUnsafe(`
     DELETE FROM "DayRoleTemplate"
-    WHERE id IN (
-      SELECT id FROM (
-        SELECT id,
-               ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS rn
-        FROM "DayRoleTemplate"
-        WHERE id NOT IN (SELECT COALESCE("templateId", '') FROM "GameDayRole" WHERE "templateId" IS NOT NULL)
-      ) dupes
-      WHERE rn > 1
+    WHERE id NOT IN (
+      SELECT MIN(id) FROM "DayRoleTemplate" GROUP BY name
     )
   `)
 
