@@ -49,6 +49,38 @@ async function main() {
     CREATE UNIQUE INDEX IF NOT EXISTS "Game_volunteerToken_key" ON "Game"("volunteerToken")
   `)
 
+  // Deduplicate TaskTemplate: keep only rows referenced by GameTask,
+  // or the first encountered for each (name, category) pair if none are referenced.
+  console.log('[premigrate] Deduplicating TaskTemplate...')
+  await prisma.$executeRawUnsafe(`
+    DELETE FROM "TaskTemplate"
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (PARTITION BY name, category ORDER BY id) AS rn
+        FROM "TaskTemplate"
+        WHERE id NOT IN (SELECT COALESCE("templateId", '') FROM "GameTask" WHERE "templateId" IS NOT NULL)
+      ) dupes
+      WHERE rn > 1
+    )
+  `)
+
+  // Deduplicate DayRoleTemplate: keep only rows referenced by GameDayRole,
+  // or the first per name if none are referenced.
+  console.log('[premigrate] Deduplicating DayRoleTemplate...')
+  await prisma.$executeRawUnsafe(`
+    DELETE FROM "DayRoleTemplate"
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS rn
+        FROM "DayRoleTemplate"
+        WHERE id NOT IN (SELECT COALESCE("templateId", '') FROM "GameDayRole" WHERE "templateId" IS NOT NULL)
+      ) dupes
+      WHERE rn > 1
+    )
+  `)
+
   console.log('[premigrate] Done.')
 }
 

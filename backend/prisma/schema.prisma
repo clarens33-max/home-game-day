@@ -167,6 +167,8 @@ model TaskTemplate {
   eventScope    EventScope @default(BOTH)
   order         Int
   gameTasks     GameTask[]
+
+  @@unique([name, category])
 }
 
 enum EventScope {
@@ -220,7 +222,7 @@ model TaskComment {
 // Seed data: predefined role templates
 model DayRoleTemplate {
   id           String @id @default(uuid())
-  name         String
+  name         String @unique
   headcount    String // "x1", "x2", "x4", "ALL", "ANYONE"
   order        Int
   gameDayRoles GameDayRole[]

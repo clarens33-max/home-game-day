@@ -166,18 +166,18 @@ async function main() {
   console.log('Seeding task templates...')
   for (const t of taskTemplates) {
     await prisma.taskTemplate.upsert({
-      where: { id: t.name }, // use name as stable key for upsert
-      update: t,
-      create: { id: require('crypto').randomUUID(), ...t },
+      where: { name_category: { name: t.name, category: t.category } },
+      update: { leadTimeDays: t.leadTimeDays, isRequired: t.isRequired ?? false, eventScope: t.eventScope, order: t.order },
+      create: t,
     })
   }
 
   console.log('Seeding day role templates...')
   for (const r of dayRoleTemplates) {
     await prisma.dayRoleTemplate.upsert({
-      where: { id: r.name },
-      update: r,
-      create: { id: require('crypto').randomUUID(), ...r },
+      where: { name: r.name },
+      update: { headcount: r.headcount, order: r.order },
+      create: r,
     })
   }
 
