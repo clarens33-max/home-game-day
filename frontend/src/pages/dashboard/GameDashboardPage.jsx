@@ -107,7 +107,8 @@ export default function GameDashboardPage() {
               <span className="text-xs text-primary-foreground/60">Share:</span>
               <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
               <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
-              <CopyLinkButton label="Volunteers" url={`${base}/v/${game.volunteerToken}`} />
+              <CopyLinkButton label="Pre-Bout Volunteers" url={`${base}/v/${game.volunteerToken}`} />
+              <CopyLinkButton label="On-the-Day Volunteers" url={`${base}/otd/${game.onTheDayToken}`} />
             </div>
           </div>
         </div>

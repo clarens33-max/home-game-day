@@ -115,8 +115,8 @@ export default function SettingsTab({ game, onRefresh, currentUserId }) {
         </h2>
         <CopyField label="Guest Team Portal" value={`${base}/g/${game.guestToken}`} />
         <CopyField label="Public Info Page" value={`${base}/p/${game.publicToken}`} />
-        <CopyField label="Volunteer Portal — Pre-Bout" value={`${base}/v/${game.volunteerToken}`} />
-        <CopyField label="Volunteer Portal — On the Day" value={`${base}/otd/${game.onTheDayToken}`} />
+        <CopyField label="Pre-Bout Volunteers" value={`${base}/v/${game.volunteerToken}`} />
+        <CopyField label="On-the-Day Volunteers" value={`${base}/otd/${game.onTheDayToken}`} />
       </div>
 
       {/* Game details */}
