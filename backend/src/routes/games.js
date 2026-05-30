@@ -249,6 +249,14 @@ router.delete('/:id/owners/:userId', requireAuth, async (req, res) => {
   res.json({ ok: true })
 })
 
+// DELETE /api/games/:id — permanently delete a game (owner only)
+router.delete('/:id', requireAuth, async (req, res) => {
+  const isOwner = await prisma.gameOwner.findUnique({ where: { gameId_userId: { gameId: req.params.id, userId: req.user.id } } })
+  if (!isOwner) return res.status(403).json({ error: 'Forbidden' })
+  await prisma.game.delete({ where: { id: req.params.id } })
+  res.json({ ok: true })
+})
+
 // GET /api/games/public/:token — public info pack (no auth)
 router.get('/public/:token', async (req, res) => {
   const game = await prisma.game.findUnique({

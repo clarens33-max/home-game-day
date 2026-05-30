@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { updateGame, addCoOwner, removeCoOwner } from '../../../api/games'
+import { updateGame, addCoOwner, removeCoOwner, deleteGame } from '../../../api/games'
 import Button from '../../../components/Button'
-import { UserPlus, Copy, ExternalLink, Check, X } from 'lucide-react'
+import { UserPlus, Copy, ExternalLink, Check, X, AlertTriangle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function CopyField({ label, value }) {
@@ -41,6 +42,7 @@ function CopyField({ label, value }) {
 
 export default function SettingsTab({ game, onRefresh, currentUserId }) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const base = window.location.origin
 
   const [form, setForm] = useState({
@@ -102,6 +104,25 @@ export default function SettingsTab({ game, onRefresh, currentUserId }) {
     e.preventDefault()
     if (!inviteEmail.trim()) return
     inviteMutation.mutate(inviteEmail.trim())
+  }
+
+  // Delete game
+  const [confirmTitle, setConfirmTitle] = useState('')
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteGame(game.id),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['game', game.id] })
+      queryClient.invalidateQueries({ queryKey: ['games'] })
+      toast.success('Game deleted')
+      navigate('/')
+    },
+    onError: (err) => toast.error(err?.response?.data?.error ?? 'Failed to delete game'),
+  })
+
+  const handleDelete = (e) => {
+    e.preventDefault()
+    if (confirmTitle !== game.title) { toast.error('Game title does not match'); return }
+    deleteMutation.mutate()
   }
 
   const inputClass = 'w-full border border-[#EAEAE4] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]'
@@ -220,6 +241,48 @@ export default function SettingsTab({ game, onRefresh, currentUserId }) {
           </Button>
         </form>
         <p className="text-xs text-[#999]">The person must already have an account. They&apos;ll get immediate access.</p>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="border-2 border-red-200 rounded-xl overflow-hidden">
+        <div className="bg-red-50 px-5 py-3 border-b border-red-200 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-red-600 shrink-0" />
+          <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone — Delete Game</h2>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-lg p-4">
+            <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+            <div className="text-sm text-red-700 space-y-1">
+              <p className="font-semibold">This action cannot be undone.</p>
+              <p>Deleting this game will permanently remove all tasks, rosters, matches, roles, signs, the info pack, and all associated data. This cannot be reversed.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleDelete} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Type <span className="font-mono bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-red-700">{game.title}</span> to confirm
+              </label>
+              <input
+                value={confirmTitle}
+                onChange={e => setConfirmTitle(e.target.value)}
+                placeholder={game.title}
+                className="w-full border border-red-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
+                autoComplete="off"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={confirmTitle !== game.title || deleteMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-200 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <Trash2 size={15} />
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete game permanently'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

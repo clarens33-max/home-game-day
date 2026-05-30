@@ -4,6 +4,7 @@ export const getGames = () => api.get('/games').then(r => r.data)
 export const createGame = data => api.post('/games', data).then(r => r.data)
 export const getGame = id => api.get(`/games/${id}`).then(r => r.data)
 export const updateGame = (id, data) => api.patch(`/games/${id}`, data).then(r => r.data)
+export const deleteGame = id => api.delete(`/games/${id}`).then(r => r.data)
 export const addCoOwner = (gameId, email) => api.post(`/games/${gameId}/owners`, { email }).then(r => r.data)
 export const removeCoOwner = (gameId, userId) => api.delete(`/games/${gameId}/owners/${userId}`).then(r => r.data)
 
