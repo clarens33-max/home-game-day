@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getLeague, updateLeague } from '../../api/games'
+import { getLeague, updateLeague, deleteLeague } from '../../api/games'
 import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
 import Button from '../../components/Button'
-import { Shield, ArrowLeft } from 'lucide-react'
+import { Shield, ArrowLeft, AlertTriangle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LeagueSettingsPage() {
@@ -42,6 +42,30 @@ export default function LeagueSettingsPage() {
     },
     onError: (err) => toast.error(err?.response?.data?.error ?? 'Failed to save'),
   })
+
+  // Delete league
+  const [deleteGames, setDeleteGames] = useState(false)
+  const [confirmName, setConfirmName] = useState('')
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteLeague(id, deleteGames),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['league', id] })
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+      toast.success('League deleted')
+      navigate('/leagues')
+    },
+    onError: (err) => toast.error(err?.response?.data?.error ?? 'Failed to delete league'),
+  })
+
+  const handleDelete = (e) => {
+    e.preventDefault()
+    if (confirmName !== league.name) {
+      toast.error('League name does not match')
+      return
+    }
+    deleteMutation.mutate()
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -167,6 +191,85 @@ export default function LeagueSettingsPage() {
               </Button>
             </div>
           </form>
+        </div>
+
+        {/* ── Danger Zone ── */}
+        <div className="border-2 border-red-200 rounded-xl overflow-hidden">
+          <div className="bg-red-50 px-5 py-3 border-b border-red-200 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-600 shrink-0" />
+            <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone</h2>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-lg p-4">
+              <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+              <div className="text-sm text-red-700 space-y-1">
+                <p className="font-semibold">This action cannot be undone.</p>
+                <p>Deleting this league will permanently remove all members, the blueprint, and all info pack templates. This cannot be reversed.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleDelete} className="space-y-4">
+              {/* What happens to games */}
+              <div>
+                <p className="text-sm font-medium mb-2">What should happen to this league&apos;s games?</p>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="deleteGames"
+                      checked={!deleteGames}
+                      onChange={() => setDeleteGames(false)}
+                      className="mt-0.5 accent-red-600 shrink-0"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Keep games — unlink from this league</p>
+                      <p className="text-xs text-[#666]">Games will remain in the system and be accessible to their owners, but will no longer be associated with this league.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="deleteGames"
+                      checked={deleteGames}
+                      onChange={() => setDeleteGames(true)}
+                      className="mt-0.5 accent-red-600 shrink-0"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-red-700">Delete all games too</p>
+                      <p className="text-xs text-[#666]">
+                        All {league.games?.length ?? 0} game{(league.games?.length ?? 0) !== 1 ? 's' : ''} belonging to this league — including all tasks, rosters, matches, and data — will be permanently deleted.{' '}
+                        <span className="font-semibold text-red-600">This cannot be undone.</span>
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Confirm by typing name */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  Type <span className="font-mono bg-red-50 border border-red-200 px-1.5 py-0.5 rounded text-red-700">{league.name}</span> to confirm
+                </label>
+                <input
+                  value={confirmName}
+                  onChange={e => setConfirmName(e.target.value)}
+                  placeholder={league.name}
+                  className="w-full border border-red-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
+                  autoComplete="off"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={confirmName !== league.name || deleteMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-200 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                <Trash2 size={15} />
+                {deleteMutation.isPending ? 'Deleting…' : deleteGames ? 'Delete league and all games' : 'Delete league'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </Layout>

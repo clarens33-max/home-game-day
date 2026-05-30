@@ -155,6 +155,32 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json(league)
 })
 
+// ── DELETE /api/leagues/:id — delete a league (owner only) ──────────────────
+router.delete('/:id', requireAuth, async (req, res) => {
+  if (!await requireOwner(req.params.id, req.user.id, res)) return
+  const { deleteGames } = req.body // boolean
+
+  if (deleteGames) {
+    // Delete all games in this league first (cascade handles game subtables)
+    const games = await prisma.game.findMany({
+      where: { leagueId: req.params.id },
+      select: { id: true },
+    })
+    if (games.length > 0) {
+      await prisma.game.deleteMany({ where: { leagueId: req.params.id } })
+    }
+  } else {
+    // Unlink games — set leagueId to null so they survive
+    await prisma.game.updateMany({
+      where: { leagueId: req.params.id },
+      data: { leagueId: null },
+    })
+  }
+
+  await prisma.league.delete({ where: { id: req.params.id } })
+  res.json({ ok: true })
+})
+
 // ── PATCH /api/leagues/:id — update league settings (owner only) ─────────────
 router.patch('/:id', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return

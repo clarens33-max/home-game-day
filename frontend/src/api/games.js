@@ -48,6 +48,7 @@ export const searchLeagues = (q) => api.get('/leagues/search', { params: { q } }
 export const createLeague = (data) => api.post('/leagues', data).then(r => r.data)
 export const getLeague = (id) => api.get(`/leagues/${id}`).then(r => r.data)
 export const updateLeague = (id, data) => api.patch(`/leagues/${id}`, data).then(r => r.data)
+export const deleteLeague = (id, deleteGames) => api.delete(`/leagues/${id}`, { data: { deleteGames } }).then(r => r.data)
 export const joinLeague = (id) => api.post(`/leagues/${id}/join`).then(r => r.data)
 export const approveMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'approve' }).then(r => r.data)
 export const rejectMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'reject' }).then(r => r.data)
