@@ -134,7 +134,18 @@ export default function SettingsTab({ game, onRefresh, currentUserId }) {
         <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: 'Oswald, sans-serif' }}>
           Shareable Links
         </h2>
-        <CopyField label="Guest Team Portal" value={`${base}/g/${game.guestToken}`} />
+        {/* Guest team links — one per visiting team, or generic if none added yet */}
+        {(game.teams?.filter(t => t.role === 'VISITING') ?? []).length === 0 ? (
+          <CopyField label="Guest Team Portal" value={`${base}/g/${game.guestToken}`} />
+        ) : (
+          game.teams.filter(t => t.role === 'VISITING').map(team => (
+            <CopyField
+              key={team.id}
+              label={`Guest Portal — ${team.name}`}
+              value={`${base}/g/${game.guestToken}?teamId=${team.id}`}
+            />
+          ))
+        )}
         <CopyField label="Public Info Page" value={`${base}/p/${game.publicToken}`} />
         <CopyField label="Pre-Bout Volunteers" value={`${base}/v/${game.volunteerToken}`} />
         <CopyField label="On-the-Day Volunteers" value={`${base}/otd/${game.onTheDayToken}`} />

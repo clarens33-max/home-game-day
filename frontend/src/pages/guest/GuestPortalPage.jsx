@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getGuestPortal, guestAddSkater, guestSignWaiver } from '../../api/games'
 import Modal from '../../components/Modal'
@@ -154,8 +154,9 @@ function AddSkaterForm({ token, teamId, onRefresh }) {
 
 export default function GuestPortalPage() {
   const { token } = useParams()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const [selectedTeamId, setSelectedTeamId] = useState(null)
+  const [selectedTeamId, setSelectedTeamId] = useState(() => searchParams.get('teamId'))
   const [waiverSkater, setWaiverSkater] = useState(null)
 
   const { data: game, isLoading, isError } = useQuery({

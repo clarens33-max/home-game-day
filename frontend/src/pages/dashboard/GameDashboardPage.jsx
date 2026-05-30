@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getGame } from '../../api/games'
@@ -10,7 +10,7 @@ import RostersTab from './tabs/RostersTab'
 import MatchesTab from './tabs/MatchesTab'
 import SettingsTab from './tabs/SettingsTab'
 import InfoPackTab from './tabs/InfoPackTab'
-import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings, BookOpen } from 'lucide-react'
+import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings, BookOpen, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const tabs = [
@@ -38,6 +38,63 @@ function CopyLinkButton({ label, url }) {
       {copied ? <Check className="w-3.5 h-3.5 text-primary-foreground" /> : <Copy className="w-3.5 h-3.5 text-primary-foreground/70" />}
       <span className="text-primary-foreground/70 text-xs">{label}</span>
     </button>
+  )
+}
+
+function GuestTeamDropdown({ teams, guestToken, base }) {
+  const [open, setOpen] = useState(false)
+  const [copiedId, setCopiedId] = useState(null)
+  const ref = useRef(null)
+
+  const visitingTeams = teams?.filter(t => t.role === 'VISITING') ?? []
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const copyLink = (team) => {
+    const url = `${base}/g/${guestToken}?teamId=${team.id}`
+    navigator.clipboard.writeText(url)
+    setCopiedId(team.id)
+    toast.success(`${team.name} link copied!`)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  // No visiting teams yet — single generic link
+  if (visitingTeams.length === 0) {
+    return <CopyLinkButton label="Guest Team" url={`${base}/g/${guestToken}`} />
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-primary-foreground/10 hover:bg-primary-foreground/15 rounded text-sm transition-colors"
+      >
+        <Copy className="w-3.5 h-3.5 text-primary-foreground/70" />
+        <span className="text-primary-foreground/70 text-xs">Guest Teams</span>
+        <ChevronDown className={`w-3 h-3 text-primary-foreground/60 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[#EAEAE4] rounded-lg shadow-lg min-w-[200px] py-1 overflow-hidden">
+          {visitingTeams.map(team => (
+            <button
+              key={team.id}
+              onClick={() => { copyLink(team); setOpen(false) }}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm text-[#1C1C1C] hover:bg-[#F7F7F5] transition-colors text-left"
+            >
+              <span className="truncate">{team.name}</span>
+              {copiedId === team.id
+                ? <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                : <Copy className="w-3.5 h-3.5 text-[#999] shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -105,9 +162,9 @@ export default function GameDashboardPage() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <span className="text-xs text-primary-foreground/60">Share:</span>
-              <CopyLinkButton label="Guest Team" url={`${base}/g/${game.guestToken}`} />
+              <GuestTeamDropdown teams={game.teams} guestToken={game.guestToken} base={base} />
               <CopyLinkButton label="Public" url={`${base}/p/${game.publicToken}`} />
               <CopyLinkButton label="Pre-Bout Volunteers" url={`${base}/v/${game.volunteerToken}`} />
               <CopyLinkButton label="On-the-Day Volunteers" url={`${base}/otd/${game.onTheDayToken}`} />
