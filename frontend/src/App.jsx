@@ -16,6 +16,7 @@ import GameDashboardPage from './pages/dashboard/GameDashboardPage'
 import LeagueListPage from './pages/league/LeagueListPage'
 import CreateLeaguePage from './pages/league/CreateLeaguePage'
 import LeaguePage from './pages/league/LeaguePage'
+import LeagueSettingsPage from './pages/league/LeagueSettingsPage'
 
 // Portals (no auth)
 import GuestPortalPage from './pages/guest/GuestPortalPage'
@@ -48,6 +49,7 @@ export default function App() {
       <Route path="/leagues" element={<RequireAuth><LeagueListPage /></RequireAuth>} />
       <Route path="/leagues/new" element={<RequireAuth><CreateLeaguePage /></RequireAuth>} />
       <Route path="/leagues/:id" element={<RequireAuth><LeaguePage /></RequireAuth>} />
+      <Route path="/leagues/:id/settings" element={<RequireAuth><LeagueSettingsPage /></RequireAuth>} />
 
       {/* Portals — public, no auth required */}
       <Route path="/g/:token" element={<GuestPortalPage />} />

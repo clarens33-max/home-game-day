@@ -337,7 +337,7 @@ function BlueprintTab({ league, isOwner }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: 'Oswald, sans-serif' }}>
-            Tasks ({tasks.length})
+            Pre-Bout Tasks ({tasks.length})
           </h3>
           {isOwner && (
             <button onClick={() => setTaskModal('add')} className="text-xs text-primary hover:underline flex items-center gap-1">
