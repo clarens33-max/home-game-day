@@ -21,6 +21,7 @@ import LeaguePage from './pages/league/LeaguePage'
 import GuestPortalPage from './pages/guest/GuestPortalPage'
 import PublicPortalPage from './pages/public/PublicPortalPage'
 import VolunteerPortalPage from './pages/volunteer/VolunteerPortalPage'
+import OnTheDayPortalPage from './pages/volunteer/OnTheDayPortalPage'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/g/:token" element={<GuestPortalPage />} />
       <Route path="/p/:token" element={<PublicPortalPage />} />
       <Route path="/v/:token" element={<VolunteerPortalPage />} />
+      <Route path="/otd/:token" element={<OnTheDayPortalPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

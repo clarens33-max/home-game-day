@@ -51,8 +51,11 @@ export const updateLeague = (id, data) => api.patch(`/leagues/${id}`, data).then
 export const joinLeague = (id) => api.post(`/leagues/${id}/join`).then(r => r.data)
 export const approveMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'approve' }).then(r => r.data)
 export const rejectMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'reject' }).then(r => r.data)
+export const promoteMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'promote' }).then(r => r.data)
+export const demoteMember = (id, userId) => api.patch(`/leagues/${id}/members/${userId}`, { action: 'demote' }).then(r => r.data)
 export const removeMember = (id, userId) => api.delete(`/leagues/${id}/members/${userId}`).then(r => r.data)
 export const seedBlueprint = (id) => api.post(`/leagues/${id}/blueprint/seed`).then(r => r.data)
+export const clearBlueprint = (id) => api.delete(`/leagues/${id}/blueprint`).then(r => r.data)
 export const addBlueprintTask = (id, data) => api.post(`/leagues/${id}/blueprint/tasks`, data).then(r => r.data)
 export const updateBlueprintTask = (id, taskId, data) => api.patch(`/leagues/${id}/blueprint/tasks/${taskId}`, data).then(r => r.data)
 export const deleteBlueprintTask = (id, taskId) => api.delete(`/leagues/${id}/blueprint/tasks/${taskId}`).then(r => r.data)
@@ -60,8 +63,11 @@ export const addBlueprintRole = (id, data) => api.post(`/leagues/${id}/blueprint
 export const updateBlueprintRole = (id, roleId, data) => api.patch(`/leagues/${id}/blueprint/roles/${roleId}`, data).then(r => r.data)
 export const deleteBlueprintRole = (id, roleId) => api.delete(`/leagues/${id}/blueprint/roles/${roleId}`).then(r => r.data)
 
-// Volunteer portal
+// Volunteer portal (pre-bout checklist)
 export const getVolunteerPortal = token => api.get(`/portal/volunteer/${token}`).then(r => r.data)
 export const volunteerUpdateTask = (token, taskId, data) => api.patch(`/portal/volunteer/${token}/tasks/${taskId}`, data).then(r => r.data)
-export const volunteerUpdateDayRoleSlot = (token, roleId, slotIndex, personName) =>
-  api.patch(`/portal/volunteer/${token}/day-roles/${roleId}/slots/${slotIndex}`, { personName }).then(r => r.data)
+
+// On-the-day portal (roles + schedule)
+export const getOnTheDayPortal = token => api.get(`/portal/on-the-day/${token}`).then(r => r.data)
+export const onTheDayUpdateDayRoleSlot = (token, roleId, slotIndex, personName) =>
+  api.patch(`/portal/on-the-day/${token}/day-roles/${roleId}/slots/${slotIndex}`, { personName }).then(r => r.data)

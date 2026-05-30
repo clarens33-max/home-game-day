@@ -23,6 +23,7 @@ app.use('/api/games/:gameId/day-roles', require('./routes/dayRoles'))
 app.use('/api/portal/guest', require('./routes/guestPortal'))
 app.use('/api/portal/public', require('./routes/publicPortal'))
 app.use('/api/portal/volunteer', require('./routes/volunteerPortal'))
+app.use('/api/portal/on-the-day', require('./routes/onTheDayPortal'))
 
 app.get('/health', (_, res) => res.json({ ok: true }))
 

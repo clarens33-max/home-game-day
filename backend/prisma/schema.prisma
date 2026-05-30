@@ -51,7 +51,8 @@ model Game {
   // Shareable tokens
   guestToken      String    @unique @default(uuid())
   publicToken     String    @unique @default(uuid())
-  volunteerToken  String    @unique @default(uuid())
+  volunteerToken  String    @unique @default(uuid())  // pre-bout checklist portal
+  onTheDayToken   String    @unique @default(uuid())  // on-the-day roles + schedule portal
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

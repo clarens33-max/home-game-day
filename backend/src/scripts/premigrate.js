@@ -18,24 +18,22 @@ async function main() {
     ALTER TABLE "Game"
       ADD COLUMN IF NOT EXISTS "guestToken"     TEXT DEFAULT gen_random_uuid()::text,
       ADD COLUMN IF NOT EXISTS "publicToken"    TEXT DEFAULT gen_random_uuid()::text,
-      ADD COLUMN IF NOT EXISTS "volunteerToken" TEXT DEFAULT gen_random_uuid()::text
+      ADD COLUMN IF NOT EXISTS "volunteerToken" TEXT DEFAULT gen_random_uuid()::text,
+      ADD COLUMN IF NOT EXISTS "onTheDayToken"  TEXT DEFAULT gen_random_uuid()::text
   `)
 
   // Backfill any NULLs (in case rows existed before columns were added)
   await prisma.$executeRawUnsafe(`
-    UPDATE "Game"
-    SET
-      "guestToken"     = gen_random_uuid()::text WHERE "guestToken"     IS NULL;
+    UPDATE "Game" SET "guestToken"     = gen_random_uuid()::text WHERE "guestToken"     IS NULL
   `)
   await prisma.$executeRawUnsafe(`
-    UPDATE "Game"
-    SET
-      "publicToken"    = gen_random_uuid()::text WHERE "publicToken"    IS NULL;
+    UPDATE "Game" SET "publicToken"    = gen_random_uuid()::text WHERE "publicToken"    IS NULL
   `)
   await prisma.$executeRawUnsafe(`
-    UPDATE "Game"
-    SET
-      "volunteerToken" = gen_random_uuid()::text WHERE "volunteerToken" IS NULL;
+    UPDATE "Game" SET "volunteerToken" = gen_random_uuid()::text WHERE "volunteerToken" IS NULL
+  `)
+  await prisma.$executeRawUnsafe(`
+    UPDATE "Game" SET "onTheDayToken"  = gen_random_uuid()::text WHERE "onTheDayToken"  IS NULL
   `)
 
   // Create unique indexes if they don't exist (Prisma db push expects these)
@@ -47,6 +45,9 @@ async function main() {
   `)
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS "Game_volunteerToken_key" ON "Game"("volunteerToken")
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "Game_onTheDayToken_key"  ON "Game"("onTheDayToken")
   `)
 
   // Deduplicate TaskTemplate: for each (name, category) group, keep the min(id)

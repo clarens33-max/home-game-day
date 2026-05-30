@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createGame, getLeagues } from '../../api/games'
 import Layout from '../../components/Layout'
 import Button from '../../components/Button'
@@ -24,6 +24,7 @@ const eventTypes = [
 
 export default function CreateGamePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [eventType, setEventType] = useState('HOME_GAME')
   const [leagueId, setLeagueId] = useState('')
   const [form, setForm] = useState({
@@ -49,6 +50,8 @@ export default function CreateGamePage() {
     mutationFn: (data) => createGame(data),
     onSuccess: (game) => {
       toast.success('Game created!')
+      // Invalidate leagues so game counts refresh
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
       navigate(`/games/${game.id}`)
     },
     onError: (err) => {

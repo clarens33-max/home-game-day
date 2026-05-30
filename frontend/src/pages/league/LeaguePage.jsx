@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getLeague, approveMember, rejectMember, seedBlueprint,
-  addBlueprintTask, deleteBlueprintTask, addBlueprintRole, deleteBlueprintRole,
+  getLeague, approveMember, rejectMember, promoteMember, demoteMember,
+  seedBlueprint, clearBlueprint,
+  addBlueprintTask, updateBlueprintTask, deleteBlueprintTask,
+  addBlueprintRole, updateBlueprintRole, deleteBlueprintRole,
 } from '../../api/games'
 import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
@@ -11,7 +13,7 @@ import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import {
   Shield, Users, BookOpen, Plus, Trash2, Check, X,
-  Clock, ExternalLink, ChevronRight, Calendar,
+  Clock, ExternalLink, ChevronRight, Calendar, Pencil,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -22,7 +24,7 @@ function formatDate(d) {
 
 // ── Members tab ──────────────────────────────────────────────────────────────
 
-function MembersTab({ league, isOwner }) {
+function MembersTab({ league, isOwner, currentUserId }) {
   const queryClient = useQueryClient()
 
   const approveMut = useMutation({
@@ -35,9 +37,20 @@ function MembersTab({ league, isOwner }) {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['league', league.id] }); toast.success('Request rejected') },
     onError: () => toast.error('Failed'),
   })
+  const promoteMut = useMutation({
+    mutationFn: (userId) => promoteMember(league.id, userId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['league', league.id] }); toast.success('Promoted to owner') },
+    onError: (err) => toast.error(err.response?.data?.error ?? 'Failed'),
+  })
+  const demoteMut = useMutation({
+    mutationFn: (userId) => demoteMember(league.id, userId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['league', league.id] }); toast.success('Demoted to member') },
+    onError: (err) => toast.error(err.response?.data?.error ?? 'Cannot demote the last owner'),
+  })
 
   const pending = league.members.filter(m => m.status === 'PENDING')
   const active = league.members.filter(m => m.status === 'ACTIVE')
+  const ownerCount = active.filter(m => m.role === 'OWNER').length
 
   return (
     <div className="space-y-6">
@@ -77,20 +90,47 @@ function MembersTab({ league, isOwner }) {
         <div className="px-4 py-3 border-b border-border">
           <p className="text-sm font-semibold">{active.length} Active Member{active.length !== 1 ? 's' : ''}</p>
         </div>
-        {active.map(m => (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/50 last:border-b-0">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-              {m.user.name[0].toUpperCase()}
+        {active.map(m => {
+          const isSelf = m.userId === currentUserId
+          const isLastOwner = m.role === 'OWNER' && ownerCount <= 1
+          return (
+            <div key={m.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/50 last:border-b-0">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                {m.user.name[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{m.user.name}{isSelf ? ' (you)' : ''}</p>
+                <p className="text-xs text-muted-foreground">{m.user.email}</p>
+              </div>
+              <span className={`text-xs font-medium ${m.role === 'OWNER' ? 'text-primary' : 'text-muted-foreground'}`}>
+                {m.role === 'OWNER' ? 'Owner' : 'Member'}
+              </span>
+              {isOwner && (
+                <div className="flex items-center gap-1">
+                  {m.role === 'MEMBER' && (
+                    <button
+                      onClick={() => promoteMut.mutate(m.userId)}
+                      disabled={promoteMut.isPending}
+                      className="text-xs px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 font-medium"
+                    >
+                      Make owner
+                    </button>
+                  )}
+                  {m.role === 'OWNER' && (isSelf || !isLastOwner) && (
+                    <button
+                      onClick={() => demoteMut.mutate(m.userId)}
+                      disabled={demoteMut.isPending || isLastOwner}
+                      title={isLastOwner ? 'Cannot demote the last owner' : undefined}
+                      className="text-xs px-2 py-1 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isSelf ? 'Leave as owner' : 'Demote'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{m.user.name}</p>
-              <p className="text-xs text-muted-foreground">{m.user.email}</p>
-            </div>
-            {m.role === 'OWNER' && (
-              <span className="text-xs text-primary font-medium">Owner</span>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -98,19 +138,28 @@ function MembersTab({ league, isOwner }) {
 
 // ── Blueprint tab ────────────────────────────────────────────────────────────
 
-function AddTaskModal({ open, onClose, leagueId }) {
+function TaskModal({ open, onClose, leagueId, task = null }) {
   const queryClient = useQueryClient()
-  const [form, setForm] = useState({ category: '', name: '', leadTimeDays: '', eventScope: 'BOTH' })
+  const isEdit = task != null
+  const [form, setForm] = useState({
+    category: task?.category ?? '',
+    name: task?.name ?? '',
+    leadTimeDays: task?.leadTimeDays != null ? String(task.leadTimeDays) : '',
+    eventScope: task?.eventScope ?? 'BOTH',
+  })
+
 
   const mutation = useMutation({
-    mutationFn: (data) => addBlueprintTask(leagueId, data),
+    mutationFn: (data) => isEdit
+      ? updateBlueprintTask(leagueId, task.id, data)
+      : addBlueprintTask(leagueId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
-      toast.success('Task added')
+      toast.success(isEdit ? 'Task updated' : 'Task added')
       onClose()
-      setForm({ category: '', name: '', leadTimeDays: '', eventScope: 'BOTH' })
+      if (!isEdit) setForm({ category: '', name: '', leadTimeDays: '', eventScope: 'BOTH' })
     },
-    onError: () => toast.error('Failed to add task'),
+    onError: () => toast.error(isEdit ? 'Failed to update task' : 'Failed to add task'),
   })
 
   const handleSubmit = (e) => {
@@ -126,7 +175,7 @@ function AddTaskModal({ open, onClose, leagueId }) {
   const set = (f) => (e) => setForm(v => ({ ...v, [f]: e.target.value }))
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Blueprint Task" size="sm">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Blueprint Task' : 'Add Blueprint Task'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Category</label>
@@ -155,7 +204,7 @@ function AddTaskModal({ open, onClose, leagueId }) {
           </div>
         </div>
         <div className="flex gap-2 pt-1">
-          <Button type="submit" loading={mutation.isPending}>Add Task</Button>
+          <Button type="submit" loading={mutation.isPending}>{isEdit ? 'Save changes' : 'Add Task'}</Button>
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
         </div>
       </form>
@@ -163,19 +212,22 @@ function AddTaskModal({ open, onClose, leagueId }) {
   )
 }
 
-function AddRoleModal({ open, onClose, leagueId }) {
+function RoleModal({ open, onClose, leagueId, role = null }) {
   const queryClient = useQueryClient()
-  const [form, setForm] = useState({ name: '', headcount: 'x1' })
+  const isEdit = role != null
+  const [form, setForm] = useState({ name: role?.name ?? '', headcount: role?.headcount ?? 'x1' })
 
   const mutation = useMutation({
-    mutationFn: (data) => addBlueprintRole(leagueId, data),
+    mutationFn: (data) => isEdit
+      ? updateBlueprintRole(leagueId, role.id, data)
+      : addBlueprintRole(leagueId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
-      toast.success('Role added')
+      toast.success(isEdit ? 'Role updated' : 'Role added')
       onClose()
-      setForm({ name: '', headcount: 'x1' })
+      if (!isEdit) setForm({ name: '', headcount: 'x1' })
     },
-    onError: () => toast.error('Failed to add role'),
+    onError: () => toast.error(isEdit ? 'Failed to update role' : 'Failed to add role'),
   })
 
   const handleSubmit = (e) => {
@@ -184,7 +236,7 @@ function AddRoleModal({ open, onClose, leagueId }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Blueprint Role" size="sm">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Blueprint Role' : 'Add Blueprint Role'} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Role name</label>
@@ -203,7 +255,7 @@ function AddRoleModal({ open, onClose, leagueId }) {
           </select>
         </div>
         <div className="flex gap-2 pt-1">
-          <Button type="submit" loading={mutation.isPending}>Add Role</Button>
+          <Button type="submit" loading={mutation.isPending}>{isEdit ? 'Save changes' : 'Add Role'}</Button>
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
         </div>
       </form>
@@ -213,13 +265,19 @@ function AddRoleModal({ open, onClose, leagueId }) {
 
 function BlueprintTab({ league, isOwner }) {
   const queryClient = useQueryClient()
-  const [addTaskOpen, setAddTaskOpen] = useState(false)
-  const [addRoleOpen, setAddRoleOpen] = useState(false)
+  const [taskModal, setTaskModal] = useState(null) // null | 'add' | task object
+  const [roleModal, setRoleModal] = useState(null) // null | 'add' | role object
 
   const seedMut = useMutation({
     mutationFn: () => seedBlueprint(league.id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['league', league.id] }); toast.success('Blueprint seeded from generic templates!') },
     onError: (err) => toast.error(err.response?.data?.error ?? 'Failed to seed'),
+  })
+
+  const clearMut = useMutation({
+    mutationFn: () => clearBlueprint(league.id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['league', league.id] }); toast.success('Blueprint cleared') },
+    onError: () => toast.error('Failed to clear blueprint'),
   })
 
   const delTaskMut = useMutation({
@@ -237,7 +295,6 @@ function BlueprintTab({ league, isOwner }) {
   const tasks = league.blueprintTasks ?? []
   const roles = league.blueprintRoles ?? []
 
-  // Group tasks by category
   const tasksByCategory = tasks.reduce((acc, t) => {
     if (!acc[t.category]) acc[t.category] = []
     acc[t.category].push(t)
@@ -246,12 +303,29 @@ function BlueprintTab({ league, isOwner }) {
 
   const isEmpty = tasks.length === 0 && roles.length === 0
 
+  const handleClearAll = () => {
+    if (window.confirm('Delete all blueprint tasks and roles? This cannot be undone.')) {
+      clearMut.mutate()
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Your league blueprint defines the default tasks and roles pre-populated when any league member creates a new game.
-        {isEmpty && ' Start by seeding from the generic template, then customise.'}
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Your league blueprint defines the default tasks and roles pre-populated when any league member creates a new game.
+          {isEmpty && ' Start by seeding from the generic template, then customise.'}
+        </p>
+        {isOwner && !isEmpty && (
+          <button
+            onClick={handleClearAll}
+            disabled={clearMut.isPending}
+            className="text-xs text-destructive hover:underline shrink-0 whitespace-nowrap"
+          >
+            Delete all
+          </button>
+        )}
+      </div>
 
       {isEmpty && isOwner && (
         <Button onClick={() => seedMut.mutate()} loading={seedMut.isPending} variant="secondary">
@@ -266,7 +340,7 @@ function BlueprintTab({ league, isOwner }) {
             Tasks ({tasks.length})
           </h3>
           {isOwner && (
-            <button onClick={() => setAddTaskOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
+            <button onClick={() => setTaskModal('add')} className="text-xs text-primary hover:underline flex items-center gap-1">
               <Plus size={12} /> Add task
             </button>
           )}
@@ -291,12 +365,14 @@ function BlueprintTab({ league, isOwner }) {
                         </p>
                       </div>
                       {isOwner && (
-                        <button
-                          onClick={() => delTaskMut.mutate(task.id)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                          <button onClick={() => setTaskModal(task)} className="text-muted-foreground hover:text-primary p-1">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => delTaskMut.mutate(task.id)} className="text-muted-foreground hover:text-destructive p-1">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -314,7 +390,7 @@ function BlueprintTab({ league, isOwner }) {
             Day Roles ({roles.length})
           </h3>
           {isOwner && (
-            <button onClick={() => setAddRoleOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
+            <button onClick={() => setRoleModal('add')} className="text-xs text-primary hover:underline flex items-center gap-1">
               <Plus size={12} /> Add role
             </button>
           )}
@@ -332,12 +408,14 @@ function BlueprintTab({ league, isOwner }) {
                   </div>
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{role.headcount}</span>
                   {isOwner && (
-                    <button
-                      onClick={() => delRoleMut.mutate(role.id)}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => setRoleModal(role)} className="text-muted-foreground hover:text-primary p-1">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => delRoleMut.mutate(role.id)} className="text-muted-foreground hover:text-destructive p-1">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -346,8 +424,20 @@ function BlueprintTab({ league, isOwner }) {
         )}
       </div>
 
-      <AddTaskModal open={addTaskOpen} onClose={() => setAddTaskOpen(false)} leagueId={league.id} />
-      <AddRoleModal open={addRoleOpen} onClose={() => setAddRoleOpen(false)} leagueId={league.id} />
+      <TaskModal
+        key={taskModal?.id ?? 'add-task'}
+        open={taskModal !== null}
+        onClose={() => setTaskModal(null)}
+        leagueId={league.id}
+        task={taskModal !== 'add' ? taskModal : null}
+      />
+      <RoleModal
+        key={roleModal?.id ?? 'add-role'}
+        open={roleModal !== null}
+        onClose={() => setRoleModal(null)}
+        leagueId={league.id}
+        role={roleModal !== 'add' ? roleModal : null}
+      />
     </div>
   )
 }
@@ -424,7 +514,10 @@ export default function LeaguePage() {
     )
   }
 
-  const isOwner = league.ownerId === user?.id
+  // isOwner: original creator OR any active member with OWNER role
+  const isOwner = league.members.some(
+    m => m.userId === user?.id && m.role === 'OWNER' && m.status === 'ACTIVE'
+  ) || league.ownerId === user?.id
   const pendingCount = league.members.filter(m => m.status === 'PENDING').length
 
   return (
@@ -480,7 +573,7 @@ export default function LeaguePage() {
         </div>
 
         {tab === 'games' && <GamesTab league={league} />}
-        {tab === 'members' && <MembersTab league={league} isOwner={isOwner} />}
+        {tab === 'members' && <MembersTab league={league} isOwner={isOwner} currentUserId={user?.id} />}
         {tab === 'blueprint' && <BlueprintTab league={league} isOwner={isOwner} />}
       </div>
     </Layout>

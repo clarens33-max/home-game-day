@@ -19,7 +19,16 @@ async function getActiveMembership(leagueId, userId) {
 async function requireOwner(leagueId, userId, res) {
   const league = await prisma.league.findUnique({ where: { id: leagueId } })
   if (!league) { res.status(404).json({ error: 'League not found' }); return null }
-  if (league.ownerId !== userId) { res.status(403).json({ error: 'Forbidden' }); return null }
+
+  const isOriginalOwner = league.ownerId === userId
+  if (!isOriginalOwner) {
+    const membership = await prisma.leagueMember.findUnique({
+      where: { leagueId_userId: { leagueId, userId } },
+    })
+    if (!membership || membership.role !== 'OWNER' || membership.status !== 'ACTIVE') {
+      res.status(403).json({ error: 'Forbidden' }); return null
+    }
+  }
   return league
 }
 
@@ -168,11 +177,13 @@ router.post('/:id/join', requireAuth, async (req, res) => {
   res.status(201).json(member)
 })
 
-// ── PATCH /api/leagues/:id/members/:userId — approve or reject (owner only) ──
+// ── PATCH /api/leagues/:id/members/:userId — approve, reject, promote, demote ─
 router.patch('/:id/members/:userId', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return
-  const { action } = req.body // "approve" | "reject"
-  if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'action must be approve or reject' })
+  const { action } = req.body // "approve" | "reject" | "promote" | "demote"
+  if (!['approve', 'reject', 'promote', 'demote'].includes(action)) {
+    return res.status(400).json({ error: 'action must be approve, reject, promote, or demote' })
+  }
 
   const membership = await prisma.leagueMember.findUnique({
     where: { leagueId_userId: { leagueId: req.params.id, userId: req.params.userId } },
@@ -185,12 +196,42 @@ router.patch('/:id/members/:userId', requireAuth, async (req, res) => {
       data: { status: 'ACTIVE' },
       include: { user: { select: { id: true, name: true, email: true } } },
     })
-    res.json(updated)
-  } else {
+    return res.json(updated)
+  }
+
+  if (action === 'reject') {
     await prisma.leagueMember.delete({
       where: { leagueId_userId: { leagueId: req.params.id, userId: req.params.userId } },
     })
-    res.json({ ok: true })
+    return res.json({ ok: true })
+  }
+
+  if (action === 'promote') {
+    if (membership.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'Can only promote active members' })
+    }
+    const updated = await prisma.leagueMember.update({
+      where: { leagueId_userId: { leagueId: req.params.id, userId: req.params.userId } },
+      data: { role: 'OWNER' },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    })
+    return res.json(updated)
+  }
+
+  if (action === 'demote') {
+    // Prevent removing the last owner
+    const ownerCount = await prisma.leagueMember.count({
+      where: { leagueId: req.params.id, role: 'OWNER', status: 'ACTIVE' },
+    })
+    if (ownerCount <= 1) {
+      return res.status(400).json({ error: 'Cannot demote the last owner' })
+    }
+    const updated = await prisma.leagueMember.update({
+      where: { leagueId_userId: { leagueId: req.params.id, userId: req.params.userId } },
+      data: { role: 'MEMBER' },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    })
+    return res.json(updated)
   }
 })
 
@@ -248,6 +289,16 @@ router.patch('/:id/blueprint/tasks/:taskId', requireAuth, async (req, res) => {
 router.delete('/:id/blueprint/tasks/:taskId', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return
   await prisma.blueprintTask.delete({ where: { id: req.params.taskId } })
+  res.json({ ok: true })
+})
+
+// DELETE /api/leagues/:id/blueprint — clear all blueprint tasks and roles
+router.delete('/:id/blueprint', requireAuth, async (req, res) => {
+  if (!await requireOwner(req.params.id, req.user.id, res)) return
+  await prisma.$transaction([
+    prisma.blueprintTask.deleteMany({ where: { leagueId: req.params.id } }),
+    prisma.blueprintDayRole.deleteMany({ where: { leagueId: req.params.id } }),
+  ])
   res.json({ ok: true })
 })
 
