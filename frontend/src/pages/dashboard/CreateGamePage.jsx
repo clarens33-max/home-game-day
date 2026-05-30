@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createGame, getLeagues } from '../../api/games'
 import Layout from '../../components/Layout'
@@ -24,9 +24,10 @@ const eventTypes = [
 
 export default function CreateGamePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [eventType, setEventType] = useState('HOME_GAME')
-  const [leagueId, setLeagueId] = useState('')
+  const [leagueId, setLeagueId] = useState(searchParams.get('leagueId') ?? '')
   const [form, setForm] = useState({
     title: '',
     homeTeamName: '',

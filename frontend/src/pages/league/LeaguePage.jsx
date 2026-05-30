@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getLeague, approveMember, rejectMember, promoteMember, demoteMember,
@@ -617,11 +617,23 @@ function BlueprintTab({ league, isOwner }) {
 
 function GamesTab({ league }) {
   const games = league.games ?? []
+  const navigate = useNavigate()
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={() => navigate(`/games/new?leagueId=${league.id}`)}
+          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+        >
+          <Plus size={13} /> New game in this league
+        </button>
+      </div>
       {games.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
-          No games yet. League members can associate new games with this league.
+          No games yet.{' '}
+          <button onClick={() => navigate(`/games/new?leagueId=${league.id}`)} className="text-primary hover:underline">
+            Create the first one.
+          </button>
         </div>
       ) : (
         games.map(game => (
@@ -743,7 +755,7 @@ export default function LeaguePage() {
           ))}
         </div>
 
-        {tab === 'games' && <GamesTab league={league} />}
+        {tab === 'games' && <GamesTab league={league} isOwner={isOwner} />}
         {tab === 'members' && <MembersTab league={league} isOwner={isOwner} currentUserId={user?.id} />}
         {tab === 'blueprint' && <BlueprintTab league={league} isOwner={isOwner} />}
       </div>

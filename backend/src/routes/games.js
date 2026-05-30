@@ -27,8 +27,8 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /api/games — create new game
 router.post('/', requireAuth, async (req, res) => {
   const { title, eventType, eventDate, homeTeamName, venueName, venueAddress, venueMapUrl, doorsOpen, ticketingUrl, description, leagueId } = req.body
-  if (!title || !eventType || !eventDate || !homeTeamName) {
-    return res.status(400).json({ error: 'title, eventType, eventDate and homeTeamName are required' })
+  if (!title || !eventType || !eventDate) {
+    return res.status(400).json({ error: 'title, eventType, and eventDate are required' })
   }
 
   // Validate league membership if leagueId provided
@@ -125,7 +125,7 @@ router.post('/', requireAuth, async (req, res) => {
       eventType,
       eventDate: new Date(eventDate),
       doorsOpen: doorsOpen ? new Date(doorsOpen) : null,
-      homeTeamName,
+      homeTeamName: homeTeamName || title, // fall back to game title if not provided
       venueName,
       venueAddress,
       venueMapUrl,
@@ -153,7 +153,7 @@ router.post('/', requireAuth, async (req, res) => {
       // Seed home team charter
       teams: {
         create: {
-          name: homeTeamName,
+          name: homeTeamName || title,
           role: 'HOME',
         },
       },

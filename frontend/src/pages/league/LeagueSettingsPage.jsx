@@ -197,7 +197,7 @@ export default function LeagueSettingsPage() {
         <div className="border-2 border-red-200 rounded-xl overflow-hidden">
           <div className="bg-red-50 px-5 py-3 border-b border-red-200 flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-600 shrink-0" />
-            <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone</h2>
+            <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone — Delete League</h2>
           </div>
 
           <div className="p-5 space-y-5">

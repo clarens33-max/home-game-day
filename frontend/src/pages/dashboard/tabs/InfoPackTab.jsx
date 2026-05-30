@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { addInfoSection, updateInfoSection, deleteInfoSection } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Image, ExternalLink, Users, Clock, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Image, Users, Clock, Lock, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function SectionModal({ open, onClose, gameId, section, onSuccess }) {
@@ -200,25 +200,26 @@ export default function InfoPackTab({ game, onRefresh }) {
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-display uppercase tracking-wider">Info Pack</h2>
           <p className="text-sm text-[#999] mt-0.5">
-            These sections appear on the{' '}
-            <a
-              href={`${base}/p/${game.publicToken}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#E91E8C] hover:underline inline-flex items-center gap-1"
-            >
-              public page <ExternalLink size={11} />
-            </a>
-            {' '}and are linked from guest and volunteer portals.
+            Sections shown on the public event page, linked from guest and volunteer portals.
           </p>
         </div>
-        <Button onClick={openAdd} size="sm">
-          <Plus size={14} /> Add section
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={`${base}/p/${game.publicToken}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#EAEAE4] rounded-lg text-xs font-medium text-[#666] hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors bg-white"
+          >
+            <BookOpen size={13} /> Preview Info Pack
+          </a>
+          <Button onClick={openAdd} size="sm">
+            <Plus size={14} /> Add section
+          </Button>
+        </div>
       </div>
 
       {sections.length === 0 ? (
