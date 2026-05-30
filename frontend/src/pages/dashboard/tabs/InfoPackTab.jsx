@@ -1,43 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { addInfoSection, updateInfoSection, deleteInfoSection } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Image, Users, Clock, Lock, BookOpen } from 'lucide-react'
+import BlockEditor from '../../../components/BlockEditor'
+import { parseBlocks, blocksToContent } from '../../../lib/blocks'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Users, Clock, Lock, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function SectionModal({ open, onClose, gameId, section, onSuccess }) {
   const isEdit = !!section
-  const [form, setForm] = useState({
-    title: section?.title ?? '',
-    content: section?.content ?? '',
-    imageUrl: section?.imageUrl ?? '',
-  })
-  const [imagePreview, setImagePreview] = useState(section?.imageUrl ?? null)
-  const fileRef = useRef(null)
-
-  const set = (f) => (e) => setForm(v => ({ ...v, [f]: e.target.value }))
-
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be under 5 MB')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setImagePreview(ev.target.result)
-      setForm(v => ({ ...v, imageUrl: ev.target.result }))
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const clearImage = () => {
-    setImagePreview(null)
-    setForm(v => ({ ...v, imageUrl: '' }))
-    if (fileRef.current) fileRef.current.value = ''
-  }
+  const [title, setTitle] = useState(section?.title ?? '')
+  const [blocks, setBlocks] = useState(() => parseBlocks(section?.content ?? ''))
 
   const addMutation = useMutation({
     mutationFn: (data) => addInfoSection(gameId, data),
@@ -53,17 +27,12 @@ function SectionModal({ open, onClose, gameId, section, onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const payload = {
-      title: form.title.trim(),
-      content: form.content,
-      imageUrl: form.imageUrl || null,
-    }
+    const payload = { title: title.trim(), content: blocksToContent(blocks), imageUrl: null }
     if (isEdit) editMutation.mutate(payload)
     else addMutation.mutate(payload)
   }
 
   const isPending = addMutation.isPending || editMutation.isPending
-
   const inputClass = 'w-full border border-[#EAEAE4] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C]'
 
   return (
@@ -71,35 +40,11 @@ function SectionModal({ open, onClose, gameId, section, onSuccess }) {
       <form onSubmit={handleSubmit} className="space-y-4 mt-1">
         <div>
           <label className="block text-sm font-medium mb-1.5">Section title *</label>
-          <input value={form.title} onChange={set('title')} required className={inputClass} placeholder="e.g. Welcome, Venue Info, Schedule" />
+          <input value={title} onChange={e => setTitle(e.target.value)} required className={inputClass} placeholder="e.g. Welcome, Venue Info, Schedule" />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Content</label>
-          <textarea
-            value={form.content}
-            onChange={set('content')}
-            rows={6}
-            className={inputClass}
-            placeholder="Write the section content here…"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1.5">Image <span className="text-[#999] font-normal text-xs">(optional, max 5 MB)</span></label>
-          {imagePreview ? (
-            <div className="space-y-2">
-              <img src={imagePreview} alt="preview" className="w-full max-h-48 object-cover rounded-lg border border-[#EAEAE4]" />
-              <button type="button" onClick={clearImage} className="text-xs text-red-500 hover:underline">Remove image</button>
-            </div>
-          ) : (
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#EAEAE4] rounded-lg p-6 cursor-pointer hover:border-[#E91E8C] hover:bg-[#fdf5f9] transition-colors"
-            >
-              <Image size={24} className="text-[#ccc]" />
-              <span className="text-sm text-[#999]">Click to upload image</span>
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          <BlockEditor blocks={blocks} onChange={setBlocks} />
         </div>
         <div className="flex gap-3 pt-1">
           <Button type="submit" loading={isPending}>{isEdit ? 'Save changes' : 'Add section'}</Button>
@@ -270,9 +215,20 @@ export default function InfoPackTab({ game, onRefresh }) {
                         ? <AutoTeamsPreview game={game} />
                         : <AutoSchedulePreview game={game} />
                     ) : (
-                      section.content && (
-                        <p className="text-xs text-[#666] line-clamp-2 whitespace-pre-wrap">{section.content}</p>
-                      )
+                      (() => {
+                        const blocks = section.content?.startsWith('[') ? (() => { try { return JSON.parse(section.content) } catch { return null } })() : null
+                        if (blocks) {
+                          const firstText = blocks.find(b => b.type === 'text' && b.value)
+                          const imgCount = blocks.filter(b => b.type === 'image' && b.url).length
+                          return (
+                            <div className="text-xs text-[#666] space-y-0.5">
+                              {firstText && <p className="line-clamp-2 whitespace-pre-wrap">{firstText.value}</p>}
+                              {imgCount > 0 && <p className="text-[#999]">{imgCount} image{imgCount !== 1 ? 's' : ''}</p>}
+                            </div>
+                          )
+                        }
+                        return section.content ? <p className="text-xs text-[#666] line-clamp-2 whitespace-pre-wrap">{section.content}</p> : null
+                      })()
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

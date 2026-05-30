@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getPublicPortal } from '../../api/games'
+import { parseBlocks } from '../../lib/blocks'
 import { MapPin, ExternalLink, Trophy, Home } from 'lucide-react'
 
 function formatDate(dateStr) {
@@ -82,6 +83,48 @@ function AutoScheduleSection({ game }) {
             <span className="text-xs text-[#666] ml-auto shrink-0">{m.durationMinutes}min</span>
           </div>
         )
+      })}
+    </div>
+  )
+}
+
+function SectionBlocks({ content, imageUrl, title }) {
+  const rawBlocks = parseBlocks(content)
+  // Filter out empty text blocks for rendering
+  const blocks = rawBlocks.filter(b => (b.type === 'text' && b.value) || (b.type === 'image' && b.url))
+
+  // Legacy sections with no blocks but a top-level imageUrl
+  if (blocks.length === 0 && !imageUrl) return null
+
+  if (blocks.length === 0 && imageUrl) {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <img src={imageUrl} alt={title} className="w-full max-h-64 object-cover" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, i) => {
+        if (block.type === 'image' && block.url) {
+          return (
+            <figure key={i} className="space-y-2">
+              <img src={block.url} alt={block.caption ?? title} className="w-full max-h-80 object-cover rounded-xl border border-white/10" />
+              {block.caption && (
+                <figcaption className="text-xs text-[#666] italic px-1">{block.caption}</figcaption>
+              )}
+            </figure>
+          )
+        }
+        if (block.type === 'text' && block.value) {
+          return (
+            <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-6">
+              <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{block.value}</p>
+            </div>
+          )
+        }
+        return null
       })}
     </div>
   )
@@ -176,20 +219,7 @@ export default function PublicPortalPage() {
                 ) : section.sectionType === 'AUTO_SCHEDULE' ? (
                   <AutoScheduleSection game={game} />
                 ) : (
-                  <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                    {section.imageUrl && (
-                      <img
-                        src={section.imageUrl}
-                        alt={section.title}
-                        className="w-full max-h-64 object-cover"
-                      />
-                    )}
-                    {section.content && (
-                      <div className="p-6">
-                        <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{section.content}</p>
-                      </div>
-                    )}
-                  </div>
+                  <SectionBlocks content={section.content} imageUrl={section.imageUrl} title={section.title} />
                 )}
               </div>
             )

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -12,9 +12,11 @@ import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
 import Button from '../../components/Button'
 import Modal from '../../components/Modal'
+import BlockEditor from '../../components/BlockEditor'
+import { parseBlocks, blocksToContent } from '../../lib/blocks'
 import {
   Shield, BookOpen, Plus, Trash2, Check, X,
-  Clock, ExternalLink, ChevronRight, Calendar, Pencil, Image,
+  Clock, ExternalLink, ChevronRight, Calendar, Pencil,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -267,33 +269,8 @@ function RoleModal({ open, onClose, leagueId, role = null }) {
 function InfoSectionModal({ open, onClose, leagueId, section = null }) {
   const queryClient = useQueryClient()
   const isEdit = section != null
-  const [form, setForm] = useState({
-    title: section?.title ?? '',
-    content: section?.content ?? '',
-    imageUrl: section?.imageUrl ?? '',
-  })
-  const [imagePreview, setImagePreview] = useState(section?.imageUrl ?? null)
-  const fileRef = useRef(null)
-
-  const set = (f) => (e) => setForm(v => ({ ...v, [f]: e.target.value }))
-
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setImagePreview(ev.target.result)
-      setForm(v => ({ ...v, imageUrl: ev.target.result }))
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const clearImage = () => {
-    setImagePreview(null)
-    setForm(v => ({ ...v, imageUrl: '' }))
-    if (fileRef.current) fileRef.current.value = ''
-  }
+  const [title, setTitle] = useState(section?.title ?? '')
+  const [blocks, setBlocks] = useState(() => parseBlocks(section?.content ?? ''))
 
   const mutation = useMutation({
     mutationFn: (data) => isEdit
@@ -309,7 +286,7 @@ function InfoSectionModal({ open, onClose, leagueId, section = null }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    mutation.mutate({ title: form.title.trim(), content: form.content, imageUrl: form.imageUrl || null })
+    mutation.mutate({ title: title.trim(), content: blocksToContent(blocks), imageUrl: null })
   }
 
   const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card'
@@ -319,29 +296,11 @@ function InfoSectionModal({ open, onClose, leagueId, section = null }) {
       <form onSubmit={handleSubmit} className="space-y-4 mt-1">
         <div>
           <label className="block text-sm font-medium mb-1">Title *</label>
-          <input value={form.title} onChange={set('title')} required placeholder="e.g. Welcome, Venue Info" className={inputClass} />
+          <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g. Welcome, Venue Info" className={inputClass} />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Content</label>
-          <textarea value={form.content} onChange={set('content')} rows={5} placeholder="Text content for this section…" className={inputClass} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Image <span className="text-muted-foreground font-normal text-xs">(optional, max 5 MB)</span></label>
-          {imagePreview ? (
-            <div className="space-y-2">
-              <img src={imagePreview} alt="preview" className="w-full max-h-40 object-cover rounded-lg border border-border" />
-              <button type="button" onClick={clearImage} className="text-xs text-destructive hover:underline">Remove image</button>
-            </div>
-          ) : (
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary transition-colors"
-            >
-              <Image size={20} className="text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Click to upload image</span>
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          <BlockEditor blocks={blocks} onChange={setBlocks} />
         </div>
         <div className="flex gap-2 pt-1">
           <Button type="submit" loading={mutation.isPending}>{isEdit ? 'Save changes' : 'Add Section'}</Button>
