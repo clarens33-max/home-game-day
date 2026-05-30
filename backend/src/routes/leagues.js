@@ -107,6 +107,34 @@ router.post('/', requireAuth, async (req, res) => {
     data: { leagueId: league.id, userId: req.user.id, role: 'OWNER', status: 'ACTIVE' },
   })
 
+  // Seed blueprint tasks, roles, and info sections from generic templates
+  const [taskTemplates, dayRoleTemplates] = await Promise.all([
+    prisma.taskTemplate.findMany({ orderBy: { order: 'asc' } }),
+    prisma.dayRoleTemplate.findMany({ orderBy: { order: 'asc' } }),
+  ])
+
+  await prisma.$transaction([
+    prisma.blueprintTask.createMany({
+      data: taskTemplates.map(t => ({
+        leagueId: league.id,
+        category: t.category,
+        name: t.name,
+        leadTimeDays: t.leadTimeDays,
+        isRequired: t.isRequired,
+        eventScope: t.eventScope,
+        order: t.order,
+      })),
+    }),
+    prisma.blueprintDayRole.createMany({
+      data: dayRoleTemplates.map(r => ({
+        leagueId: league.id,
+        name: r.name,
+        headcount: r.headcount,
+        order: r.order,
+      })),
+    }),
+  ])
+
   // Seed default info pack template sections
   await prisma.blueprintInfoSection.createMany({
     data: DEFAULT_INFO_SECTIONS.map(s => ({

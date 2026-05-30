@@ -4,24 +4,29 @@ import { updateTask, addTask, deleteTask, addComment } from '../../../api/games'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
 import { ChevronDown, ChevronRight, MessageSquare, Plus, Trash2, Send } from 'lucide-react'
+const DropChevron = ChevronDown
 import toast from 'react-hot-toast'
 
-// ── Exact v0 status helpers ──────────────────────────────────────────────────
-const STATUS_CYCLE = { TO_DO: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: 'TO_DO' }
+// ── Status helpers ───────────────────────────────────────────────────────────
+const STATUSES = ['TO_DO', 'IN_PROGRESS', 'DONE', 'BLOCKED']
 
 function getStatusColor(status) {
   switch (status) {
     case 'TO_DO':       return 'bg-muted text-muted-foreground'
-    case 'IN_PROGRESS': return 'bg-primary text-primary-foreground'
-    case 'DONE':        return 'bg-success text-success-foreground'
+    case 'IN_PROGRESS': return 'bg-primary/15 text-primary'
+    case 'DONE':        return 'bg-green-100 text-green-700'
+    case 'BLOCKED':     return 'bg-amber-100 text-amber-700'
+    default:            return 'bg-muted text-muted-foreground'
   }
 }
 
 function getStatusLabel(status) {
   switch (status) {
-    case 'TO_DO':       return 'TO DO'
-    case 'IN_PROGRESS': return 'IN PROGRESS'
-    case 'DONE':        return 'DONE'
+    case 'TO_DO':       return 'To Do'
+    case 'IN_PROGRESS': return 'In Progress'
+    case 'DONE':        return 'Done'
+    case 'BLOCKED':     return 'Blocked'
+    default:            return status
   }
 }
 
@@ -182,17 +187,20 @@ function TaskRow({ task, game, onRefresh, isLast }) {
           !isLast ? 'border-b border-border/50' : ''
         } hover:bg-muted/30 transition-colors group`}
       >
-        {/* Status Button — exact v0 */}
-        <button
-          onClick={() => statusMutation.mutate({ status: STATUS_CYCLE[task.status] })}
-          disabled={statusMutation.isPending}
-          className={`shrink-0 px-2 sm:px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide transition-all hover:scale-105 active:scale-95 ${getStatusColor(task.status)}`}
-        >
-          <span className="hidden sm:inline">{getStatusLabel(task.status)}</span>
-          <span className="sm:hidden">
-            {task.status === 'TO_DO' ? 'TD' : task.status === 'IN_PROGRESS' ? 'IP' : 'DN'}
-          </span>
-        </button>
+        {/* Status dropdown */}
+        <div className="relative shrink-0">
+          <select
+            value={task.status}
+            onChange={(e) => statusMutation.mutate({ status: e.target.value })}
+            disabled={statusMutation.isPending}
+            className={`appearance-none cursor-pointer pl-2.5 pr-6 py-1 rounded-full text-xs font-medium tracking-wide border-0 focus:outline-none focus:ring-2 focus:ring-primary/40 ${getStatusColor(task.status)}`}
+          >
+            {STATUSES.map(s => (
+              <option key={s} value={s}>{getStatusLabel(s)}</option>
+            ))}
+          </select>
+          <DropChevron size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+        </div>
 
         {/* Task Name — exact v0 */}
         <span className={`flex-1 min-w-0 truncate ${task.status === 'DONE' ? 'line-through text-muted-foreground' : ''}`}>

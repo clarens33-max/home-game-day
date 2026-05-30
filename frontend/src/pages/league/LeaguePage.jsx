@@ -357,7 +357,7 @@ function BlueprintTab({ league, isOwner }) {
     return acc
   }, {})
 
-  const isEmpty = tasks.length === 0 && roles.length === 0 && infoSections.length === 0
+  const isEmpty = tasks.length === 0 && roles.length === 0
 
   const handleClearAll = () => {
     if (window.confirm('Delete all blueprint tasks, roles, and info sections? This cannot be undone.')) {

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getGuestPortal, guestAddSkater, guestSignWaiver } from '../../api/games'
 import Modal from '../../components/Modal'
 import Button from '../../components/Button'
-import { Check, X, Pen, MapPin, Clock, Calendar, BookOpen } from 'lucide-react'
+import { Check, Pen, MapPin, Clock, Calendar, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import SignaturePad from 'signature_pad'
 
