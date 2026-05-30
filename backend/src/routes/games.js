@@ -2,6 +2,7 @@ const router = require('express').Router()
 const { v4: uuidv4 } = require('uuid')
 const prisma = require('../lib/prisma')
 const { requireAuth } = require('../middleware/auth')
+const { DEFAULT_INFO_SECTIONS } = require('../lib/defaultInfoSections')
 
 function makeSlug(title) {
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)
@@ -77,10 +78,11 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     infoSectionSeedData = blueprintInfoSections.map(s => ({
-      type: 'custom',
+      type: s.sectionType === 'AUTO_TEAMS' ? 'teams' : s.sectionType === 'AUTO_SCHEDULE' ? 'schedule' : 'custom',
       title: s.title,
       content: s.content,
       imageUrl: s.imageUrl,
+      sectionType: s.sectionType ?? null,
       order: s.order,
       visible: true,
     }))
@@ -97,6 +99,19 @@ router.post('/', requireAuth, async (req, res) => {
   if (!roleSeedData) {
     const dayRoles = await prisma.dayRoleTemplate.findMany({ orderBy: { order: 'asc' } })
     roleSeedData = dayRoles.map(r => ({ templateId: r.id, order: r.order }))
+  }
+
+  // Fall back to default info sections if no blueprint provided them
+  if (infoSectionSeedData.length === 0) {
+    infoSectionSeedData = DEFAULT_INFO_SECTIONS.map(s => ({
+      type: s.sectionType === 'AUTO_TEAMS' ? 'teams' : s.sectionType === 'AUTO_SCHEDULE' ? 'schedule' : 'custom',
+      title: s.title,
+      content: s.content,
+      imageUrl: null,
+      sectionType: s.sectionType ?? null,
+      order: s.order,
+      visible: true,
+    }))
   }
 
   // Keep backward-compat variable names for the create block
@@ -142,10 +157,8 @@ router.post('/', requireAuth, async (req, res) => {
           role: 'HOME',
         },
       },
-      // Seed info pack sections from league blueprint (if any)
-      ...(infoSectionSeedData.length > 0 && {
-        publicSections: { create: infoSectionSeedData },
-      }),
+      // Seed info pack sections (from league blueprint or defaults)
+      publicSections: { create: infoSectionSeedData },
     },
     include: { owners: true },
   })

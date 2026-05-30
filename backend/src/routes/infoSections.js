@@ -36,6 +36,7 @@ router.post('/', requireAuth, async (req, res) => {
     data: {
       gameId: req.params.gameId,
       type: 'custom',
+      sectionType: 'CUSTOM',
       title: title.trim(),
       content: content ?? '',
       imageUrl: imageUrl ?? null,
@@ -66,6 +67,11 @@ router.patch('/:sectionId', requireAuth, async (req, res) => {
 // DELETE /api/games/:gameId/info-sections/:sectionId
 router.delete('/:sectionId', requireAuth, async (req, res) => {
   if (!await requireGameOwner(req.params.gameId, req.user.id, res)) return
+  const section = await prisma.publicSection.findUnique({ where: { id: req.params.sectionId } })
+  if (!section) return res.status(404).json({ error: 'Section not found' })
+  if (section.sectionType === 'AUTO_TEAMS' || section.sectionType === 'AUTO_SCHEDULE') {
+    return res.status(400).json({ error: 'Auto-populated sections cannot be deleted' })
+  }
   await prisma.publicSection.delete({ where: { id: req.params.sectionId } })
   res.json({ ok: true })
 })

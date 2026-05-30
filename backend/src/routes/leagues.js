@@ -2,6 +2,7 @@ const router = require('express').Router()
 const { v4: uuidv4 } = require('uuid')
 const prisma = require('../lib/prisma')
 const { requireAuth } = require('../middleware/auth')
+const { DEFAULT_INFO_SECTIONS } = require('../lib/defaultInfoSections')
 
 function makeSlug(name) {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)
@@ -104,6 +105,18 @@ router.post('/', requireAuth, async (req, res) => {
   // Auto-add the owner as an ACTIVE OWNER member
   await prisma.leagueMember.create({
     data: { leagueId: league.id, userId: req.user.id, role: 'OWNER', status: 'ACTIVE' },
+  })
+
+  // Seed default info pack template sections
+  await prisma.blueprintInfoSection.createMany({
+    data: DEFAULT_INFO_SECTIONS.map(s => ({
+      leagueId: league.id,
+      title: s.title,
+      content: s.content,
+      sectionType: s.sectionType ?? null,
+      imageUrl: null,
+      order: s.order,
+    })),
   })
 
   res.status(201).json(league)
@@ -317,6 +330,9 @@ router.post('/:id/blueprint/seed', requireAuth, async (req, res) => {
     prisma.dayRoleTemplate.findMany({ orderBy: { order: 'asc' } }),
   ])
 
+  // Seed info sections only if none exist yet (they may have been auto-created on league creation)
+  const existingInfoCount = await prisma.blueprintInfoSection.count({ where: { leagueId: req.params.id } })
+
   await prisma.$transaction([
     prisma.blueprintTask.createMany({
       data: templates.map(t => ({
@@ -337,11 +353,27 @@ router.post('/:id/blueprint/seed', requireAuth, async (req, res) => {
         order: r.order,
       })),
     }),
+    ...(existingInfoCount === 0 ? [
+      prisma.blueprintInfoSection.createMany({
+        data: DEFAULT_INFO_SECTIONS.map(s => ({
+          leagueId: req.params.id,
+          title: s.title,
+          content: s.content,
+          sectionType: s.sectionType ?? null,
+          imageUrl: null,
+          order: s.order,
+        })),
+      }),
+    ] : []),
   ])
 
   const blueprint = await prisma.league.findUnique({
     where: { id: req.params.id },
-    select: { blueprintTasks: { orderBy: [{ category: 'asc' }, { order: 'asc' }] }, blueprintRoles: { orderBy: { order: 'asc' } } },
+    select: {
+      blueprintTasks: { orderBy: [{ category: 'asc' }, { order: 'asc' }] },
+      blueprintRoles: { orderBy: { order: 'asc' } },
+      blueprintInfoSections: { orderBy: { order: 'asc' } },
+    },
   })
   res.json(blueprint)
 })
@@ -388,13 +420,21 @@ router.post('/:id/blueprint/info-sections', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return
   const { title, content, imageUrl, order } = req.body
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' })
+
+  // Get max order for default placement
+  const maxOrder = await prisma.blueprintInfoSection.aggregate({
+    where: { leagueId: req.params.id },
+    _max: { order: true },
+  })
+
   const section = await prisma.blueprintInfoSection.create({
     data: {
       leagueId: req.params.id,
       title: title.trim(),
       content: content ?? '',
       imageUrl: imageUrl ?? null,
-      order: order ?? 0,
+      sectionType: null, // user-created sections are always CUSTOM
+      order: order ?? (maxOrder._max.order ?? 0) + 1,
     },
   })
   res.status(201).json(section)

@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getPublicPortal } from '../../api/games'
-import { MapPin, Clock, ExternalLink, Trophy, Home } from 'lucide-react'
+import { MapPin, ExternalLink, Trophy, Home } from 'lucide-react'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -11,6 +11,80 @@ function formatDate(dateStr) {
 function formatTime(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+function AutoTeamsSection({ game }) {
+  const homeTeam = game.teams?.find(t => t.role === 'HOME')
+  const visitingTeams = game.teams?.filter(t => t.role === 'VISITING') ?? []
+  const allTeams = [homeTeam, ...visitingTeams].filter(Boolean)
+
+  if (allTeams.length === 0) return null
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      {allTeams.map(team => (
+        <div key={team.name} className="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            {team.logoUrl ? (
+              <img src={team.logoUrl} alt={team.name} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#E91E8C]/20 border border-[#E91E8C]/40 flex items-center justify-center">
+                {team.role === 'HOME' ? <Home size={16} className="text-[#E91E8C]" /> : <Trophy size={16} className="text-white/60" />}
+              </div>
+            )}
+            <div>
+              <p className="font-bold text-sm" style={{ fontFamily: 'Oswald, sans-serif' }}>{team.name}</p>
+              <p className="text-xs text-[#999]">{team.role === 'HOME' ? 'Home' : 'Visiting'}</p>
+            </div>
+          </div>
+          {team.jerseyColour && (
+            <p className="text-xs text-[#999] mb-2">Jersey: {team.jerseyColour}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AutoScheduleSection({ game }) {
+  const blocks = game.timingBlocks ?? []
+  const matches = game.matches ?? []
+
+  // Merge blocks and matches into a unified timeline, sorted by time
+  const items = [
+    ...blocks.map(b => ({ sortKey: b.time, type: 'block', data: b })),
+    ...matches.map(m => ({ sortKey: m.scheduledTime ? formatTime(m.scheduledTime) : '99:99', type: 'match', data: m })),
+  ].sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+
+  if (items.length === 0) return <p className="text-[#999] text-sm">Schedule to be confirmed.</p>
+
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => {
+        if (item.type === 'block') {
+          const b = item.data
+          return (
+            <div key={b.id} className="flex items-center gap-4 py-2 border-b border-white/5 last:border-0">
+              <span className="font-mono text-[#E91E8C] text-sm font-bold w-14 shrink-0">{b.time}</span>
+              <span className="text-sm text-[#ccc]">{b.activity}</span>
+            </div>
+          )
+        }
+        const m = item.data
+        return (
+          <div key={m.id} className="flex items-center gap-4 py-2 border-b border-white/5 last:border-0">
+            <span className="font-mono text-[#E91E8C] text-sm font-bold w-14 shrink-0">
+              {m.scheduledTime ? formatTime(m.scheduledTime) : `Bout ${i + 1}`}
+            </span>
+            <span className="text-sm font-bold text-white" style={{ fontFamily: 'Oswald, sans-serif' }}>
+              {m.homeTeam} <span className="text-[#E91E8C]">vs</span> {m.awayTeam}
+            </span>
+            <span className="text-xs text-[#666] ml-auto shrink-0">{m.durationMinutes}min</span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function PublicPortalPage() {
@@ -37,14 +111,12 @@ export default function PublicPortalPage() {
     )
   }
 
-  const homeTeam = game.teams?.find(t => t.role === 'HOME')
-  const visitingTeams = game.teams?.filter(t => t.role === 'VISITING') ?? []
+  const hasSections = game.publicSections?.length > 0
 
   return (
     <div className="min-h-screen bg-[#1C1C1C] text-white">
       {/* Hero */}
       <div className="relative overflow-hidden">
-        {/* Background texture */}
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #E91E8C 0, #E91E8C 1px, transparent 0, transparent 50%)', backgroundSize: '20px 20px' }} />
 
         <div className="relative max-w-4xl mx-auto px-4 py-16 sm:py-24 text-center">
@@ -55,7 +127,6 @@ export default function PublicPortalPage() {
             {game.title}
           </h1>
 
-          {/* Date + venue */}
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-[#ccc] mb-8">
             {game.eventDate && (
               <span className="flex items-center gap-2">
@@ -72,7 +143,6 @@ export default function PublicPortalPage() {
             )}
           </div>
 
-          {/* Ticket CTA */}
           {game.ticketingUrl && (
             <a
               href={game.ticketingUrl}
@@ -87,126 +157,128 @@ export default function PublicPortalPage() {
         </div>
       </div>
 
-      {/* Divider */}
       <div className="h-px bg-gradient-to-r from-transparent via-[#E91E8C] to-transparent" />
 
-      {/* Teams matchup */}
-      {(homeTeam || visitingTeams.length > 0) && (
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          {game.matches && game.matches.length > 0 ? (
-            <div>
-              <h2 className="text-center text-xs uppercase tracking-widest text-[#999] mb-8" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                Bouts
-              </h2>
-              <div className="space-y-4">
-                {game.matches.map((match, i) => (
-                  <div key={match.id} className="bg-white/5 border border-white/10 rounded-xl px-6 py-5 flex flex-wrap items-center gap-4">
-                    {match.scheduledTime && (
-                      <div className="text-[#E91E8C] font-mono text-sm font-bold w-14 shrink-0">
-                        {formatTime(match.scheduledTime)}
+      {hasSections ? (
+        /* ── Section-based layout (new games with info pack) ── */
+        <div className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+          {game.publicSections.map(section => {
+            if (!section.visible) return null
+
+            return (
+              <div key={section.id}>
+                <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-4 font-semibold" style={{ fontFamily: 'Oswald, sans-serif' }}>
+                  {section.title}
+                </h2>
+
+                {section.sectionType === 'AUTO_TEAMS' ? (
+                  <AutoTeamsSection game={game} />
+                ) : section.sectionType === 'AUTO_SCHEDULE' ? (
+                  <AutoScheduleSection game={game} />
+                ) : (
+                  <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                    {section.imageUrl && (
+                      <img
+                        src={section.imageUrl}
+                        alt={section.title}
+                        className="w-full max-h-64 object-cover"
+                      />
+                    )}
+                    {section.content && (
+                      <div className="p-6">
+                        <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{section.content}</p>
                       </div>
                     )}
-                    <div className="flex-1 flex items-center justify-center gap-4">
-                      <span className="text-lg font-bold" style={{ fontFamily: 'Oswald, sans-serif' }}>{match.homeTeam}</span>
-                      <span className="text-[#E91E8C] font-black text-xl" style={{ fontFamily: 'Oswald, sans-serif' }}>VS</span>
-                      <span className="text-lg font-bold" style={{ fontFamily: 'Oswald, sans-serif' }}>{match.awayTeam}</span>
-                    </div>
-                    <div className="text-xs text-[#666] shrink-0">
-                      {match.durationMinutes}min · {match.periods}P
-                      {match.boutType && ` · ${match.boutType}`}
-                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            homeTeam && visitingTeams.length > 0 && (
-              <div className="flex items-center justify-center gap-8 sm:gap-16">
-                <div className="text-center">
-                  <div className="w-20 h-20 rounded-full bg-[#E91E8C]/20 border-2 border-[#E91E8C] flex items-center justify-center mb-3 mx-auto">
-                    <Home size={28} className="text-[#E91E8C]" />
-                  </div>
-                  <p className="font-bold text-lg" style={{ fontFamily: 'Oswald, sans-serif' }}>{homeTeam.name}</p>
-                  <p className="text-xs text-[#999]">Home</p>
-                </div>
-                <div className="text-4xl font-black text-[#E91E8C]" style={{ fontFamily: 'Oswald, sans-serif' }}>VS</div>
-                {visitingTeams.map(team => (
-                  <div key={team.id} className="text-center">
-                    <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center mb-3 mx-auto">
-                      <Trophy size={28} className="text-white/60" />
-                    </div>
-                    <p className="font-bold text-lg" style={{ fontFamily: 'Oswald, sans-serif' }}>{team.name}</p>
-                    <p className="text-xs text-[#999]">Visiting</p>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-        </div>
-      )}
-
-      {/* Venue + info */}
-      {(game.venueName || game.venueAddress || game.venueMapUrl || game.description) && (
-        <>
-          <div className="h-px bg-white/10 mx-auto max-w-4xl" />
-          <div className="max-w-4xl mx-auto px-4 py-12 grid sm:grid-cols-2 gap-8">
-            {(game.venueName || game.venueAddress) && (
-              <div>
-                <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                  Venue
-                </h2>
-                <p className="font-semibold text-lg mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>{game.venueName}</p>
-                {game.venueAddress && <p className="text-[#999] text-sm">{game.venueAddress}</p>}
-                {game.venueMapUrl && (
-                  <a
-                    href={game.venueMapUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-3 text-sm text-[#E91E8C] hover:underline"
-                  >
-                    <MapPin size={14} /> View on map
-                  </a>
                 )}
               </div>
-            )}
-            {game.description && (
-              <div>
-                <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                  About
-                </h2>
-                <p className="text-[#ccc] text-sm leading-relaxed">{game.description}</p>
+            )
+          })}
+        </div>
+      ) : (
+        /* ── Legacy layout (old games with no sections) ── */
+        <>
+          {/* Teams matchup */}
+          {(game.teams?.length > 0) && (
+            <div className="max-w-4xl mx-auto px-4 py-12">
+              {game.matches && game.matches.length > 0 ? (
+                <div>
+                  <h2 className="text-center text-xs uppercase tracking-widest text-[#999] mb-8" style={{ fontFamily: 'Oswald, sans-serif' }}>Bouts</h2>
+                  <div className="space-y-4">
+                    {game.matches.map((match) => (
+                      <div key={match.id} className="bg-white/5 border border-white/10 rounded-xl px-6 py-5 flex flex-wrap items-center gap-4">
+                        {match.scheduledTime && (
+                          <div className="text-[#E91E8C] font-mono text-sm font-bold w-14 shrink-0">{formatTime(match.scheduledTime)}</div>
+                        )}
+                        <div className="flex-1 flex items-center justify-center gap-4">
+                          <span className="text-lg font-bold" style={{ fontFamily: 'Oswald, sans-serif' }}>{match.homeTeam}</span>
+                          <span className="text-[#E91E8C] font-black text-xl" style={{ fontFamily: 'Oswald, sans-serif' }}>VS</span>
+                          <span className="text-lg font-bold" style={{ fontFamily: 'Oswald, sans-serif' }}>{match.awayTeam}</span>
+                        </div>
+                        <div className="text-xs text-[#666] shrink-0">{match.durationMinutes}min · {match.periods}P{match.boutType && ` · ${match.boutType}`}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                (() => {
+                  const homeTeam = game.teams?.find(t => t.role === 'HOME')
+                  const visitingTeams = game.teams?.filter(t => t.role === 'VISITING') ?? []
+                  return homeTeam && visitingTeams.length > 0 ? (
+                    <div className="flex items-center justify-center gap-8 sm:gap-16">
+                      <div className="text-center">
+                        <div className="w-20 h-20 rounded-full bg-[#E91E8C]/20 border-2 border-[#E91E8C] flex items-center justify-center mb-3 mx-auto">
+                          <Home size={28} className="text-[#E91E8C]" />
+                        </div>
+                        <p className="font-bold text-lg" style={{ fontFamily: 'Oswald, sans-serif' }}>{homeTeam.name}</p>
+                        <p className="text-xs text-[#999]">Home</p>
+                      </div>
+                      <div className="text-4xl font-black text-[#E91E8C]" style={{ fontFamily: 'Oswald, sans-serif' }}>VS</div>
+                      {visitingTeams.map(team => (
+                        <div key={team.name} className="text-center">
+                          <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center mb-3 mx-auto">
+                            <Trophy size={28} className="text-white/60" />
+                          </div>
+                          <p className="font-bold text-lg" style={{ fontFamily: 'Oswald, sans-serif' }}>{team.name}</p>
+                          <p className="text-xs text-[#999]">Visiting</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null
+                })()
+              )}
+            </div>
+          )}
+
+          {/* Venue + info */}
+          {(game.venueName || game.venueAddress || game.venueMapUrl || game.description) && (
+            <>
+              <div className="h-px bg-white/10 mx-auto max-w-4xl" />
+              <div className="max-w-4xl mx-auto px-4 py-12 grid sm:grid-cols-2 gap-8">
+                {(game.venueName || game.venueAddress) && (
+                  <div>
+                    <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Venue</h2>
+                    <p className="font-semibold text-lg mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>{game.venueName}</p>
+                    {game.venueAddress && <p className="text-[#999] text-sm">{game.venueAddress}</p>}
+                    {game.venueMapUrl && (
+                      <a href={game.venueMapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 mt-3 text-sm text-[#E91E8C] hover:underline">
+                        <MapPin size={14} /> View on map
+                      </a>
+                    )}
+                  </div>
+                )}
+                {game.description && (
+                  <div>
+                    <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>About</h2>
+                    <p className="text-[#ccc] text-sm leading-relaxed">{game.description}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </>
       )}
 
-      {/* Info pack sections */}
-      {game.publicSections?.length > 0 && (
-        <div className="max-w-4xl mx-auto px-4 pb-12 space-y-8">
-          {game.publicSections.map(section => (
-            <div key={section.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-              {section.imageUrl && (
-                <img
-                  src={section.imageUrl}
-                  alt={section.title}
-                  className="w-full max-h-64 object-cover"
-                />
-              )}
-              <div className="p-6">
-                <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-3" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                  {section.title}
-                </h2>
-                {section.content && (
-                  <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{section.content}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Footer */}
       <div className="border-t border-white/10 py-8 text-center">
         <p className="text-[#666] text-xs">{game.title} · Organised with Home Game Day</p>
       </div>
