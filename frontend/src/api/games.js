@@ -71,3 +71,14 @@ export const volunteerUpdateTask = (token, taskId, data) => api.patch(`/portal/v
 export const getOnTheDayPortal = token => api.get(`/portal/on-the-day/${token}`).then(r => r.data)
 export const onTheDayUpdateDayRoleSlot = (token, roleId, slotIndex, personName) =>
   api.patch(`/portal/on-the-day/${token}/day-roles/${roleId}/slots/${slotIndex}`, { personName }).then(r => r.data)
+
+// Info Pack (game-level public sections)
+export const getInfoSections = gameId => api.get(`/games/${gameId}/info-sections`).then(r => r.data)
+export const addInfoSection = (gameId, data) => api.post(`/games/${gameId}/info-sections`, data).then(r => r.data)
+export const updateInfoSection = (gameId, sectionId, data) => api.patch(`/games/${gameId}/info-sections/${sectionId}`, data).then(r => r.data)
+export const deleteInfoSection = (gameId, sectionId) => api.delete(`/games/${gameId}/info-sections/${sectionId}`).then(r => r.data)
+
+// Blueprint info sections (league-level)
+export const addBlueprintInfoSection = (leagueId, data) => api.post(`/leagues/${leagueId}/blueprint/info-sections`, data).then(r => r.data)
+export const updateBlueprintInfoSection = (leagueId, sectionId, data) => api.patch(`/leagues/${leagueId}/blueprint/info-sections/${sectionId}`, data).then(r => r.data)
+export const deleteBlueprintInfoSection = (leagueId, sectionId) => api.delete(`/leagues/${leagueId}/blueprint/info-sections/${sectionId}`).then(r => r.data)

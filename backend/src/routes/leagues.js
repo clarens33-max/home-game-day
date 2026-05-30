@@ -129,6 +129,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       },
       blueprintTasks: { orderBy: [{ category: 'asc' }, { order: 'asc' }] },
       blueprintRoles: { orderBy: { order: 'asc' } },
+      blueprintInfoSections: { orderBy: { order: 'asc' } },
     },
   })
   if (!league) return res.status(404).json({ error: 'Not found' })
@@ -292,12 +293,13 @@ router.delete('/:id/blueprint/tasks/:taskId', requireAuth, async (req, res) => {
   res.json({ ok: true })
 })
 
-// DELETE /api/leagues/:id/blueprint — clear all blueprint tasks and roles
+// DELETE /api/leagues/:id/blueprint — clear all blueprint tasks, roles, and info sections
 router.delete('/:id/blueprint', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return
   await prisma.$transaction([
     prisma.blueprintTask.deleteMany({ where: { leagueId: req.params.id } }),
     prisma.blueprintDayRole.deleteMany({ where: { leagueId: req.params.id } }),
+    prisma.blueprintInfoSection.deleteMany({ where: { leagueId: req.params.id } }),
   ])
   res.json({ ok: true })
 })
@@ -376,6 +378,48 @@ router.patch('/:id/blueprint/roles/:roleId', requireAuth, async (req, res) => {
 router.delete('/:id/blueprint/roles/:roleId', requireAuth, async (req, res) => {
   if (!await requireOwner(req.params.id, req.user.id, res)) return
   await prisma.blueprintDayRole.delete({ where: { id: req.params.roleId } })
+  res.json({ ok: true })
+})
+
+// ── Blueprint: info sections ─────────────────────────────────────────────────
+
+// POST /api/leagues/:id/blueprint/info-sections
+router.post('/:id/blueprint/info-sections', requireAuth, async (req, res) => {
+  if (!await requireOwner(req.params.id, req.user.id, res)) return
+  const { title, content, imageUrl, order } = req.body
+  if (!title?.trim()) return res.status(400).json({ error: 'title is required' })
+  const section = await prisma.blueprintInfoSection.create({
+    data: {
+      leagueId: req.params.id,
+      title: title.trim(),
+      content: content ?? '',
+      imageUrl: imageUrl ?? null,
+      order: order ?? 0,
+    },
+  })
+  res.status(201).json(section)
+})
+
+// PATCH /api/leagues/:id/blueprint/info-sections/:sectionId
+router.patch('/:id/blueprint/info-sections/:sectionId', requireAuth, async (req, res) => {
+  if (!await requireOwner(req.params.id, req.user.id, res)) return
+  const { title, content, imageUrl, order } = req.body
+  const section = await prisma.blueprintInfoSection.update({
+    where: { id: req.params.sectionId },
+    data: {
+      ...(title?.trim() && { title: title.trim() }),
+      ...(content !== undefined && { content }),
+      ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
+      ...(order !== undefined && { order }),
+    },
+  })
+  res.json(section)
+})
+
+// DELETE /api/leagues/:id/blueprint/info-sections/:sectionId
+router.delete('/:id/blueprint/info-sections/:sectionId', requireAuth, async (req, res) => {
+  if (!await requireOwner(req.params.id, req.user.id, res)) return
+  await prisma.blueprintInfoSection.delete({ where: { id: req.params.sectionId } })
   res.json({ ok: true })
 })
 

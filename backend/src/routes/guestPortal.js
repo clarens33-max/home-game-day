@@ -9,6 +9,7 @@ router.get('/:token', async (req, res) => {
       id: true, title: true, eventDate: true, doorsOpen: true,
       venueName: true, venueAddress: true, venueMapUrl: true,
       homeTeamName: true, logoUrl: true,
+      publicToken: true, // included so guest portal can link to info pack
       matches: { orderBy: { order: 'asc' } },
       timingBlocks: { orderBy: { order: 'asc' } },
       teams: {

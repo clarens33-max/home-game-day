@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getGuestPortal, guestAddSkater, guestSignWaiver } from '../../api/games'
 import Modal from '../../components/Modal'
 import Button from '../../components/Button'
-import { Check, X, Pen, MapPin, Clock, Calendar } from 'lucide-react'
+import { Check, X, Pen, MapPin, Clock, Calendar, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import SignaturePad from 'signature_pad'
 
@@ -225,6 +225,19 @@ export default function GuestPortalPage() {
                   <span className="text-xs text-[#999]">{m.durationMinutes}min</span>
                 </div>
               ))}
+            </div>
+          )}
+          {game.publicToken && (
+            <div className="pt-2 border-t border-[#EAEAE4] mt-2">
+              <a
+                href={`/p/${game.publicToken}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#E91E8C] hover:underline"
+              >
+                <BookOpen size={14} />
+                View event info pack
+              </a>
             </div>
           )}
         </div>

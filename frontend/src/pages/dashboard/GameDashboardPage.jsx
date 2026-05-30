@@ -9,7 +9,8 @@ import OnTheDayTab from './tabs/OnTheDayTab'
 import RostersTab from './tabs/RostersTab'
 import MatchesTab from './tabs/MatchesTab'
 import SettingsTab from './tabs/SettingsTab'
-import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings } from 'lucide-react'
+import InfoPackTab from './tabs/InfoPackTab'
+import { Trophy, Home, Copy, Check, Calendar, ClipboardList, Users, Settings, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const tabs = [
@@ -17,6 +18,7 @@ const tabs = [
   { id: 'On the Day', label: 'ON THE DAY', icon: Calendar },
   { id: 'Rosters',    label: 'ROSTERS',    icon: Users },
   { id: 'Matches',    label: 'MATCHES',    icon: Trophy },
+  { id: 'Info Pack',  label: 'INFO PACK',  icon: BookOpen },
   { id: 'Settings',   label: 'SETTINGS',   icon: Settings },
 ]
 
@@ -142,6 +144,7 @@ export default function GameDashboardPage() {
         {activeTab === 'On the Day' && <OnTheDayTab  game={game} onRefresh={onRefresh} />}
         {activeTab === 'Rosters'    && <RostersTab   game={game} onRefresh={onRefresh} />}
         {activeTab === 'Matches'    && <MatchesTab   game={game} onRefresh={onRefresh} />}
+        {activeTab === 'Info Pack'  && <InfoPackTab  game={game} onRefresh={onRefresh} />}
         {activeTab === 'Settings'   && <SettingsTab  game={game} onRefresh={onRefresh} currentUserId={user?.id} />}
       </main>
     </Layout>

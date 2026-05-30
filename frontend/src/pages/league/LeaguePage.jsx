@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -6,6 +6,7 @@ import {
   seedBlueprint, clearBlueprint,
   addBlueprintTask, updateBlueprintTask, deleteBlueprintTask,
   addBlueprintRole, updateBlueprintRole, deleteBlueprintRole,
+  addBlueprintInfoSection, updateBlueprintInfoSection, deleteBlueprintInfoSection,
 } from '../../api/games'
 import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
@@ -13,7 +14,7 @@ import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import {
   Shield, Users, BookOpen, Plus, Trash2, Check, X,
-  Clock, ExternalLink, ChevronRight, Calendar, Pencil,
+  Clock, ExternalLink, ChevronRight, Calendar, Pencil, Image,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -263,10 +264,99 @@ function RoleModal({ open, onClose, leagueId, role = null }) {
   )
 }
 
+function InfoSectionModal({ open, onClose, leagueId, section = null }) {
+  const queryClient = useQueryClient()
+  const isEdit = section != null
+  const [form, setForm] = useState({
+    title: section?.title ?? '',
+    content: section?.content ?? '',
+    imageUrl: section?.imageUrl ?? '',
+  })
+  const [imagePreview, setImagePreview] = useState(section?.imageUrl ?? null)
+  const fileRef = useRef(null)
+
+  const set = (f) => (e) => setForm(v => ({ ...v, [f]: e.target.value }))
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImagePreview(ev.target.result)
+      setForm(v => ({ ...v, imageUrl: ev.target.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const clearImage = () => {
+    setImagePreview(null)
+    setForm(v => ({ ...v, imageUrl: '' }))
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const mutation = useMutation({
+    mutationFn: (data) => isEdit
+      ? updateBlueprintInfoSection(leagueId, section.id, data)
+      : addBlueprintInfoSection(leagueId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+      toast.success(isEdit ? 'Section updated' : 'Section added')
+      onClose()
+    },
+    onError: () => toast.error(isEdit ? 'Failed to update section' : 'Failed to add section'),
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    mutation.mutate({ title: form.title.trim(), content: form.content, imageUrl: form.imageUrl || null })
+  }
+
+  const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card'
+
+  return (
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Info Section' : 'Add Info Section'} size="md">
+      <form onSubmit={handleSubmit} className="space-y-4 mt-1">
+        <div>
+          <label className="block text-sm font-medium mb-1">Title *</label>
+          <input value={form.title} onChange={set('title')} required placeholder="e.g. Welcome, Venue Info" className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Content</label>
+          <textarea value={form.content} onChange={set('content')} rows={5} placeholder="Text content for this section…" className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Image <span className="text-muted-foreground font-normal text-xs">(optional, max 5 MB)</span></label>
+          {imagePreview ? (
+            <div className="space-y-2">
+              <img src={imagePreview} alt="preview" className="w-full max-h-40 object-cover rounded-lg border border-border" />
+              <button type="button" onClick={clearImage} className="text-xs text-destructive hover:underline">Remove image</button>
+            </div>
+          ) : (
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary transition-colors"
+            >
+              <Image size={20} className="text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Click to upload image</span>
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <Button type="submit" loading={mutation.isPending}>{isEdit ? 'Save changes' : 'Add Section'}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 function BlueprintTab({ league, isOwner }) {
   const queryClient = useQueryClient()
   const [taskModal, setTaskModal] = useState(null) // null | 'add' | task object
   const [roleModal, setRoleModal] = useState(null) // null | 'add' | role object
+  const [infoModal, setInfoModal] = useState(null) // null | 'add' | section object
 
   const seedMut = useMutation({
     mutationFn: () => seedBlueprint(league.id),
@@ -292,8 +382,15 @@ function BlueprintTab({ league, isOwner }) {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const delInfoMut = useMutation({
+    mutationFn: (sectionId) => deleteBlueprintInfoSection(league.id, sectionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['league', league.id] }),
+    onError: () => toast.error('Failed to delete'),
+  })
+
   const tasks = league.blueprintTasks ?? []
   const roles = league.blueprintRoles ?? []
+  const infoSections = league.blueprintInfoSections ?? []
 
   const tasksByCategory = tasks.reduce((acc, t) => {
     if (!acc[t.category]) acc[t.category] = []
@@ -301,10 +398,10 @@ function BlueprintTab({ league, isOwner }) {
     return acc
   }, {})
 
-  const isEmpty = tasks.length === 0 && roles.length === 0
+  const isEmpty = tasks.length === 0 && roles.length === 0 && infoSections.length === 0
 
   const handleClearAll = () => {
-    if (window.confirm('Delete all blueprint tasks and roles? This cannot be undone.')) {
+    if (window.confirm('Delete all blueprint tasks, roles, and info sections? This cannot be undone.')) {
       clearMut.mutate()
     }
   }
@@ -424,6 +521,53 @@ function BlueprintTab({ league, isOwner }) {
         )}
       </div>
 
+      {/* Info Pack Sections */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: 'Oswald, sans-serif' }}>
+            Info Pack Sections ({infoSections.length})
+          </h3>
+          {isOwner && (
+            <button onClick={() => setInfoModal('add')} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Plus size={12} /> Add section
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          These sections are copied into the Info Pack when a new game is created from this league.
+        </p>
+
+        {infoSections.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-border rounded-lg">No info sections yet</p>
+        ) : (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="divide-y divide-border/50">
+              {infoSections.map(section => (
+                <div key={section.id} className="flex items-center gap-3 px-4 py-2.5 group">
+                  {section.imageUrl && (
+                    <img src={section.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{section.title}</p>
+                    {section.content && <p className="text-xs text-muted-foreground truncate">{section.content}</p>}
+                  </div>
+                  {isOwner && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => setInfoModal(section)} className="text-muted-foreground hover:text-primary p-1">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => delInfoMut.mutate(section.id)} className="text-muted-foreground hover:text-destructive p-1">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <TaskModal
         key={taskModal?.id ?? 'add-task'}
         open={taskModal !== null}
@@ -437,6 +581,13 @@ function BlueprintTab({ league, isOwner }) {
         onClose={() => setRoleModal(null)}
         leagueId={league.id}
         role={roleModal !== 'add' ? roleModal : null}
+      />
+      <InfoSectionModal
+        key={infoModal?.id ?? 'add-info'}
+        open={infoModal !== null}
+        onClose={() => setInfoModal(null)}
+        leagueId={league.id}
+        section={infoModal !== 'add' ? infoModal : null}
       />
     </div>
   )

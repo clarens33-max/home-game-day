@@ -294,14 +294,15 @@ model TimingBlock {
 // ─── Public Page Sections ────────────────────────────────────────────
 
 model PublicSection {
-  id      String @id @default(uuid())
-  game    Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  gameId  String
-  type    String // "venue", "about", "faq", "schedule", "custom"
-  title   String
-  content String
-  order   Int    @default(0)
-  visible Boolean @default(true)
+  id       String  @id @default(uuid())
+  game     Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId   String
+  type     String  // "venue", "about", "faq", "schedule", "custom"
+  title    String
+  content  String
+  imageUrl String? // base64 or URL
+  order    Int     @default(0)
+  visible  Boolean @default(true)
 }
 
 // ─── Leagues ─────────────────────────────────────────────────────────
@@ -317,10 +318,11 @@ model League {
   ownerId     String
   owner       User     @relation("LeagueOwner", fields: [ownerId], references: [id])
 
-  members         LeagueMember[]
-  games           Game[]
-  blueprintTasks  BlueprintTask[]
-  blueprintRoles  BlueprintDayRole[]
+  members              LeagueMember[]
+  games                Game[]
+  blueprintTasks       BlueprintTask[]
+  blueprintRoles       BlueprintDayRole[]
+  blueprintInfoSections BlueprintInfoSection[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -370,4 +372,14 @@ model BlueprintDayRole {
   name      String
   headcount String // "x1", "x2", "x4", "ALL", "ANYONE"
   order     Int    @default(0)
+}
+
+model BlueprintInfoSection {
+  id       String  @id @default(uuid())
+  leagueId String
+  league   League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  title    String
+  content  String
+  imageUrl String? // placeholder text (e.g. "[Upload banner image]") or base64
+  order    Int     @default(0)
 }

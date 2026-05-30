@@ -18,6 +18,7 @@ app.use('/api/games/:gameId/tasks', require('./routes/tasks'))
 app.use('/api/games/:gameId/matches', require('./routes/matches'))
 app.use('/api/games/:gameId/teams', require('./routes/teams'))
 app.use('/api/games/:gameId/day-roles', require('./routes/dayRoles'))
+app.use('/api/games/:gameId/info-sections', require('./routes/infoSections'))
 
 // Guest, public, and volunteer portal routes live under /api/portal for clean separation
 app.use('/api/portal/guest', require('./routes/guestPortal'))

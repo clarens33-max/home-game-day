@@ -44,13 +44,18 @@ router.post('/', requireAuth, async (req, res) => {
   // Load tasks: from league blueprint if available, else generic templates
   let taskSeedData
   let roleSeedData
+  let infoSectionSeedData = []
   if (leagueId) {
-    const [blueprintTasks, blueprintRoles] = await Promise.all([
+    const [blueprintTasks, blueprintRoles, blueprintInfoSections] = await Promise.all([
       prisma.blueprintTask.findMany({
         where: { leagueId, eventScope: { in: [eventType, 'BOTH'] } },
         orderBy: { order: 'asc' },
       }),
       prisma.blueprintDayRole.findMany({
+        where: { leagueId },
+        orderBy: { order: 'asc' },
+      }),
+      prisma.blueprintInfoSection.findMany({
         where: { leagueId },
         orderBy: { order: 'asc' },
       }),
@@ -70,6 +75,15 @@ router.post('/', requireAuth, async (req, res) => {
         order: r.order,
       }))
     }
+
+    infoSectionSeedData = blueprintInfoSections.map(s => ({
+      type: 'custom',
+      title: s.title,
+      content: s.content,
+      imageUrl: s.imageUrl,
+      order: s.order,
+      visible: true,
+    }))
   }
 
   // Fall back to generic templates if no blueprint was found
@@ -128,6 +142,10 @@ router.post('/', requireAuth, async (req, res) => {
           role: 'HOME',
         },
       },
+      // Seed info pack sections from league blueprint (if any)
+      ...(infoSectionSeedData.length > 0 && {
+        publicSections: { create: infoSectionSeedData },
+      }),
     },
     include: { owners: true },
   })

@@ -181,15 +181,26 @@ export default function PublicPortalPage() {
         </>
       )}
 
-      {/* Custom public sections */}
+      {/* Info pack sections */}
       {game.publicSections?.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 pb-12 space-y-8">
           {game.publicSections.map(section => (
-            <div key={section.id} className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-3" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                {section.title}
-              </h2>
-              <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{section.content}</p>
+            <div key={section.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+              {section.imageUrl && (
+                <img
+                  src={section.imageUrl}
+                  alt={section.title}
+                  className="w-full max-h-64 object-cover"
+                />
+              )}
+              <div className="p-6">
+                <h2 className="text-xs uppercase tracking-widest text-[#E91E8C] mb-3" style={{ fontFamily: 'Oswald, sans-serif' }}>
+                  {section.title}
+                </h2>
+                {section.content && (
+                  <p className="text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">{section.content}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
