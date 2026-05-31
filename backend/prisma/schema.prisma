@@ -325,6 +325,7 @@ model League {
   blueprintTasks       BlueprintTask[]
   blueprintRoles       BlueprintDayRole[]
   blueprintInfoSections BlueprintInfoSection[]
+  seasons              LeagueSeason[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -385,4 +386,37 @@ model BlueprintInfoSection {
   imageUrl    String? // placeholder text (e.g. "[Upload banner image]") or base64
   sectionType String? // null | "CUSTOM" | "AUTO_TEAMS" | "AUTO_SCHEDULE"
   order       Int     @default(0)
+}
+
+model LeagueSeason {
+  id        String   @id @default(uuid())
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  name      String   // "2025-26 Season"
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  teams LeagueTeam[]
+}
+
+model LeagueTeam {
+  id           String       @id @default(uuid())
+  seasonId     String
+  season       LeagueSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  name         String
+  jerseyColour String?
+  logoUrl      String?
+  order        Int          @default(0)
+
+  skaters LeagueSkater[]
+}
+
+model LeagueSkater {
+  id           String     @id @default(uuid())
+  teamId       String
+  team         LeagueTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  derbyName    String
+  skaterNumber String?
+  pronouns     String?
+  createdAt    DateTime   @default(now())
 }

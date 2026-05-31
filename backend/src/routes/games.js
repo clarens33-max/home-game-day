@@ -88,6 +88,21 @@ router.post('/', requireAuth, async (req, res) => {
     }))
   }
 
+  // Load active season roster if league provided
+  let seasonTeams = []
+  if (leagueId) {
+    const activeSeason = await prisma.leagueSeason.findFirst({
+      where: { leagueId, isActive: true },
+      include: {
+        teams: {
+          include: { skaters: { orderBy: { createdAt: 'asc' } } },
+          orderBy: { order: 'asc' },
+        },
+      },
+    })
+    if (activeSeason) seasonTeams = activeSeason.teams
+  }
+
   // Fall back to generic templates if no blueprint was found
   if (!taskSeedData) {
     const templates = await prisma.taskTemplate.findMany({
@@ -150,12 +165,24 @@ router.post('/', requireAuth, async (req, res) => {
           { name: 'Timing lists', copies: 'x6', notes: '1 for refs/NSO, 1 per team, 1 on the door', order: 8 },
         ],
       },
-      // Seed home team charter
+      // Seed home team charter — from active league season roster if available
       teams: {
-        create: {
-          name: homeTeamName || title,
-          role: 'HOME',
-        },
+        create: seasonTeams.length > 0
+          ? seasonTeams.map(t => ({
+              name: t.name,
+              role: 'HOME',
+              jerseyColour: t.jerseyColour ?? null,
+              logoUrl: t.logoUrl ?? null,
+              skaters: {
+                create: t.skaters.map(s => ({
+                  derbyName: s.derbyName,
+                  skaterNumber: s.skaterNumber ?? null,
+                  pronouns: s.pronouns ?? null,
+                  benchSlot: false,
+                })),
+              },
+            }))
+          : [{ name: homeTeamName || title, role: 'HOME' }],
       },
       // Seed info pack sections (from league blueprint or defaults)
       publicSections: { create: infoSectionSeedData },

@@ -147,6 +147,17 @@ router.post('/', requireAuth, async (req, res) => {
     })),
   })
 
+  // Create the first active season with a derby-season-aware name
+  const now = new Date()
+  const year = now.getFullYear()
+  const seasonName = now.getMonth() >= 8
+    ? `${year}-${String(year + 1).slice(2)} Season`
+    : `${year - 1}-${String(year).slice(2)} Season`
+
+  await prisma.leagueSeason.create({
+    data: { leagueId: league.id, name: seasonName, isActive: true },
+  })
+
   res.status(201).json(league)
 })
 

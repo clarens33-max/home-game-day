@@ -84,3 +84,19 @@ export const deleteInfoSection = (gameId, sectionId) => api.delete(`/games/${gam
 export const addBlueprintInfoSection = (leagueId, data) => api.post(`/leagues/${leagueId}/blueprint/info-sections`, data).then(r => r.data)
 export const updateBlueprintInfoSection = (leagueId, sectionId, data) => api.patch(`/leagues/${leagueId}/blueprint/info-sections/${sectionId}`, data).then(r => r.data)
 export const deleteBlueprintInfoSection = (leagueId, sectionId) => api.delete(`/leagues/${leagueId}/blueprint/info-sections/${sectionId}`).then(r => r.data)
+
+// ── League Roster ─────────────────────────────────────────────────────
+export const getLeagueSeasons = (leagueId) => api.get(`/leagues/${leagueId}/seasons`).then(r => r.data)
+export const getLeagueSeason = (leagueId, seasonId) => api.get(`/leagues/${leagueId}/seasons/${seasonId}`).then(r => r.data)
+export const createLeagueSeason = (leagueId, data) => api.post(`/leagues/${leagueId}/seasons`, data).then(r => r.data)
+export const updateLeagueSeason = (leagueId, seasonId, data) => api.patch(`/leagues/${leagueId}/seasons/${seasonId}`, data).then(r => r.data)
+export const deleteLeagueSeason = (leagueId, seasonId) => api.delete(`/leagues/${leagueId}/seasons/${seasonId}`).then(r => r.data)
+
+export const addLeagueTeam = (leagueId, seasonId, data) => api.post(`/leagues/${leagueId}/seasons/${seasonId}/teams`, data).then(r => r.data)
+export const updateLeagueTeam = (leagueId, seasonId, teamId, data) => api.patch(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}`, data).then(r => r.data)
+export const deleteLeagueTeam = (leagueId, seasonId, teamId) => api.delete(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}`).then(r => r.data)
+
+export const addLeagueSkater = (leagueId, seasonId, teamId, data) => api.post(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}/skaters`, data).then(r => r.data)
+export const bulkAddLeagueSkaters = (leagueId, seasonId, teamId, skaters) => api.post(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}/skaters/bulk`, { skaters }).then(r => r.data)
+export const updateLeagueSkater = (leagueId, seasonId, teamId, skaterId, data) => api.patch(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}/skaters/${skaterId}`, data).then(r => r.data)
+export const deleteLeagueSkater = (leagueId, seasonId, teamId, skaterId) => api.delete(`/leagues/${leagueId}/seasons/${seasonId}/teams/${teamId}/skaters/${skaterId}`).then(r => r.data)

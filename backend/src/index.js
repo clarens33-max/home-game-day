@@ -13,6 +13,7 @@ app.use(express.json({ limit: '10mb' })) // 10mb for signature images
 // Routes
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/leagues', require('./routes/leagues'))
+app.use('/api/leagues/:leagueId/seasons', require('./routes/leagueRoster'))
 app.use('/api/games', require('./routes/games'))
 app.use('/api/games/:gameId/tasks', require('./routes/tasks'))
 app.use('/api/games/:gameId/matches', require('./routes/matches'))

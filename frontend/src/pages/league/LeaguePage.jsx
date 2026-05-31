@@ -7,6 +7,9 @@ import {
   addBlueprintTask, updateBlueprintTask, deleteBlueprintTask,
   addBlueprintRole, updateBlueprintRole, deleteBlueprintRole,
   addBlueprintInfoSection, updateBlueprintInfoSection, deleteBlueprintInfoSection,
+  getLeagueSeasons, getLeagueSeason, createLeagueSeason, updateLeagueSeason, deleteLeagueSeason,
+  addLeagueTeam, deleteLeagueTeam,
+  addLeagueSkater, deleteLeagueSkater,
 } from '../../api/games'
 import { useAuth } from '../../lib/auth'
 import Layout from '../../components/Layout'
@@ -572,6 +575,311 @@ function BlueprintTab({ league, isOwner }) {
   )
 }
 
+// ── Roster tab ───────────────────────────────────────────────────────────────
+
+function RosterTab({ league, isOwner }) {
+  const queryClient = useQueryClient()
+  const [selectedSeasonId, setSelectedSeasonId] = useState(null)
+  const [showNewSeason, setShowNewSeason] = useState(false)
+  const [newSeasonName, setNewSeasonName] = useState('')
+  const [addTeamOpen, setAddTeamOpen] = useState(false)
+  const [newTeamName, setNewTeamName] = useState('')
+  const [addSkaterTeamId, setAddSkaterTeamId] = useState(null)
+  const [newSkater, setNewSkater] = useState({ derbyName: '', skaterNumber: '', pronouns: '' })
+  const [bulkTeamId, setBulkTeamId] = useState(null)
+  const [bulkText, setBulkText] = useState('')
+
+  const { data: seasons = [], isLoading: loadingSeasons } = useQuery({
+    queryKey: ['league', league.id, 'seasons'],
+    queryFn: () => getLeagueSeasons(league.id),
+    staleTime: 30_000,
+  })
+
+  // Auto-select the active season on load
+  const activeSeason = seasons.find(s => s.isActive)
+  const effectiveSeasonId = selectedSeasonId ?? activeSeason?.id ?? seasons[0]?.id ?? null
+
+  const { data: season } = useQuery({
+    queryKey: ['league', league.id, 'seasons', effectiveSeasonId],
+    queryFn: () => getLeagueSeason(league.id, effectiveSeasonId),
+    enabled: !!effectiveSeasonId,
+    staleTime: 30_000,
+  })
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['league', league.id, 'seasons'] })
+    if (effectiveSeasonId) {
+      queryClient.invalidateQueries({ queryKey: ['league', league.id, 'seasons', effectiveSeasonId] })
+    }
+  }
+
+  const createSeasonMut = useMutation({
+    mutationFn: (data) => createLeagueSeason(league.id, data),
+    onSuccess: (s) => { invalidate(); setShowNewSeason(false); setNewSeasonName(''); setSelectedSeasonId(s.id); toast.success('Season created') },
+    onError: () => toast.error('Failed to create season'),
+  })
+
+  const activateSeasonMut = useMutation({
+    mutationFn: (seasonId) => updateLeagueSeason(league.id, seasonId, { isActive: true }),
+    onSuccess: () => { invalidate(); toast.success('Season set as active') },
+    onError: () => toast.error('Failed'),
+  })
+
+  const deleteSeasonMut = useMutation({
+    mutationFn: (seasonId) => deleteLeagueSeason(league.id, seasonId),
+    onSuccess: () => { invalidate(); setSelectedSeasonId(null); toast.success('Season deleted') },
+    onError: () => toast.error('Failed to delete season'),
+  })
+
+  const addTeamMut = useMutation({
+    mutationFn: (data) => addLeagueTeam(league.id, effectiveSeasonId, data),
+    onSuccess: () => { invalidate(); setAddTeamOpen(false); setNewTeamName(''); toast.success('Team added') },
+    onError: () => toast.error('Failed to add team'),
+  })
+
+  const deleteTeamMut = useMutation({
+    mutationFn: (teamId) => deleteLeagueTeam(league.id, effectiveSeasonId, teamId),
+    onSuccess: () => { invalidate(); toast.success('Team removed') },
+    onError: () => toast.error('Failed'),
+  })
+
+  const addSkaterMut = useMutation({
+    mutationFn: ({ teamId, data }) => addLeagueSkater(league.id, effectiveSeasonId, teamId, data),
+    onSuccess: () => { invalidate(); setAddSkaterTeamId(null); setNewSkater({ derbyName: '', skaterNumber: '', pronouns: '' }); toast.success('Skater added') },
+    onError: () => toast.error('Failed to add skater'),
+  })
+
+  const deleteSkaterMut = useMutation({
+    mutationFn: ({ teamId, skaterId }) => deleteLeagueSkater(league.id, effectiveSeasonId, teamId, skaterId),
+    onSuccess: () => { invalidate(); toast.success('Skater removed') },
+    onError: () => toast.error('Failed'),
+  })
+
+  const handleBulkImport = (teamId) => {
+    const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean)
+    const skaters = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim())
+      return { derbyName: parts[0], skaterNumber: parts[1] ?? null, pronouns: parts[2] ?? null }
+    }).filter(s => s.derbyName)
+    if (!skaters.length) { toast.error('No valid skaters found'); return }
+    Promise.all(skaters.map(s => addLeagueSkater(league.id, effectiveSeasonId, teamId, s)))
+      .then(() => { invalidate(); setBulkTeamId(null); setBulkText(''); toast.success(`${skaters.length} skaters imported`) })
+      .catch(() => toast.error('Some skaters failed to import'))
+  }
+
+  if (loadingSeasons) return <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+
+  return (
+    <div className="space-y-5">
+      {/* Season selector */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Season:</span>
+        {seasons.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setSelectedSeasonId(s.id)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+              effectiveSeasonId === s.id
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+            }`}
+          >
+            {s.name}
+            {s.isActive && <span className="ml-1.5 text-[10px] bg-primary text-white rounded-full px-1.5 py-0.5">Active</span>}
+          </button>
+        ))}
+        {isOwner && !showNewSeason && (
+          <button
+            onClick={() => setShowNewSeason(true)}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            <Plus size={12} /> New season
+          </button>
+        )}
+      </div>
+
+      {/* New season form */}
+      {showNewSeason && (
+        <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg">
+          <input
+            autoFocus
+            value={newSeasonName}
+            onChange={e => setNewSeasonName(e.target.value)}
+            placeholder="e.g. 2026-27 Season"
+            className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            onKeyDown={e => { if (e.key === 'Enter') createSeasonMut.mutate({ name: newSeasonName }) }}
+          />
+          <Button size="sm" onClick={() => createSeasonMut.mutate({ name: newSeasonName })} loading={createSeasonMut.isPending}>Create</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setShowNewSeason(false); setNewSeasonName('') }}>Cancel</Button>
+        </div>
+      )}
+
+      {seasons.length === 0 && (
+        <div className="text-center py-10 text-muted-foreground text-sm border border-dashed border-border rounded-xl">
+          No seasons yet. Create a season to start building your roster.
+        </div>
+      )}
+
+      {effectiveSeasonId && season && (
+        <>
+          {/* Season actions */}
+          {isOwner && (
+            <div className="flex items-center gap-3 text-xs">
+              {!season.isActive && (
+                <button
+                  onClick={() => activateSeasonMut.mutate(effectiveSeasonId)}
+                  className="text-primary hover:underline"
+                >
+                  Set as active (used for new games)
+                </button>
+              )}
+              {season.isActive && (
+                <span className="text-muted-foreground italic">This season&apos;s roster is copied to new games</span>
+              )}
+              <button
+                onClick={() => { if (window.confirm('Delete this season and all its teams and skaters?')) deleteSeasonMut.mutate(effectiveSeasonId) }}
+                className="text-destructive hover:underline ml-auto"
+              >
+                Delete season
+              </button>
+            </div>
+          )}
+
+          {/* Teams */}
+          <div className="space-y-4">
+            {season.teams?.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-xl">No teams yet. Add a team to start building the roster.</p>
+            )}
+            {season.teams?.map(team => (
+              <div key={team.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/20">
+                  <h3 className="flex-1 text-sm font-semibold" style={{ fontFamily: 'Oswald, sans-serif' }}>{team.name}</h3>
+                  {team.jerseyColour && (
+                    <span className="text-xs text-muted-foreground">{team.jerseyColour}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">{team.skaters?.length ?? 0} skaters</span>
+                  {isOwner && (
+                    <button onClick={() => deleteTeamMut.mutate(team.id)} className="text-muted-foreground hover:text-destructive p-1">
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+                <div className="divide-y divide-border/40">
+                  {team.skaters?.map((skater, i) => (
+                    <div key={skater.id} className="flex items-center gap-3 px-4 py-2.5 group">
+                      <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{skater.derbyName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {skater.skaterNumber && `#${skater.skaterNumber}`}
+                          {skater.pronouns && ` · ${skater.pronouns}`}
+                        </p>
+                      </div>
+                      {isOwner && (
+                        <button
+                          onClick={() => deleteSkaterMut.mutate({ teamId: team.id, skaterId: skater.id })}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-all"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Add skater inline */}
+                  {isOwner && addSkaterTeamId === team.id ? (
+                    <div className="px-4 py-3 bg-muted/30 space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-3 sm:col-span-1">
+                          <input
+                            autoFocus
+                            value={newSkater.derbyName}
+                            onChange={e => setNewSkater(v => ({ ...v, derbyName: e.target.value }))}
+                            placeholder="Derby name *"
+                            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                          />
+                        </div>
+                        <input
+                          value={newSkater.skaterNumber}
+                          onChange={e => setNewSkater(v => ({ ...v, skaterNumber: e.target.value }))}
+                          placeholder="#Number"
+                          className="border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                        />
+                        <input
+                          value={newSkater.pronouns}
+                          onChange={e => setNewSkater(v => ({ ...v, pronouns: e.target.value }))}
+                          placeholder="Pronouns"
+                          className="border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => { if (!newSkater.derbyName.trim()) { toast.error('Derby name required'); return } addSkaterMut.mutate({ teamId: team.id, data: newSkater }) }} loading={addSkaterMut.isPending}>Add</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setAddSkaterTeamId(null); setNewSkater({ derbyName: '', skaterNumber: '', pronouns: '' }) }}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : isOwner && bulkTeamId === team.id ? (
+                    <div className="px-4 py-3 bg-muted/30 space-y-2">
+                      <p className="text-xs text-muted-foreground">One skater per line: <span className="font-mono">Derby Name, #Number, Pronouns</span></p>
+                      <textarea
+                        autoFocus
+                        value={bulkText}
+                        onChange={e => setBulkText(e.target.value)}
+                        rows={5}
+                        placeholder={"Hellz Bellz, 42, she/her\nRollzilla, 767\nDestructa"}
+                        className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleBulkImport(team.id)}>Import</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setBulkTeamId(null); setBulkText('') }}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : isOwner ? (
+                    <div className="px-4 py-2 flex items-center gap-3">
+                      <button onClick={() => { setAddSkaterTeamId(team.id); setBulkTeamId(null) }} className="text-xs text-primary hover:underline flex items-center gap-1">
+                        <Plus size={11} /> Add skater
+                      </button>
+                      <button onClick={() => { setBulkTeamId(team.id); setAddSkaterTeamId(null) }} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                        Bulk import
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+
+            {/* Add team */}
+            {isOwner && (
+              <div>
+                {addTeamOpen ? (
+                  <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg">
+                    <input
+                      autoFocus
+                      value={newTeamName}
+                      onChange={e => setNewTeamName(e.target.value)}
+                      placeholder="Team name"
+                      className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      onKeyDown={e => { if (e.key === 'Enter') addTeamMut.mutate({ name: newTeamName }) }}
+                    />
+                    <Button size="sm" onClick={() => { if (!newTeamName.trim()) { toast.error('Name required'); return } addTeamMut.mutate({ name: newTeamName }) }} loading={addTeamMut.isPending}>Add</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setAddTeamOpen(false); setNewTeamName('') }}>Cancel</Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddTeamOpen(true)}
+                    className="w-full border-2 border-dashed border-border hover:border-primary rounded-xl py-3 text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Plus size={14} className="inline mr-1" /> Add team
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Games tab ────────────────────────────────────────────────────────────────
 
 function GamesTab({ league }) {
@@ -623,7 +931,7 @@ function GamesTab({ league }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
-const TABS = ['games', 'members', 'blueprint']
+const TABS = ['games', 'roster', 'members', 'blueprint']
 
 export default function LeaguePage() {
   const { id } = useParams()
@@ -715,6 +1023,7 @@ export default function LeaguePage() {
         </div>
 
         {tab === 'games' && <GamesTab league={league} isOwner={isOwner} />}
+        {tab === 'roster' && <RosterTab league={league} isOwner={isOwner} />}
         {tab === 'members' && <MembersTab league={league} isOwner={isOwner} currentUserId={user?.id} />}
         {tab === 'blueprint' && <BlueprintTab league={league} isOwner={isOwner} />}
       </div>
